@@ -1,0 +1,121 @@
+ID	Founder Name	Company Name	Position	Founder Email	Founder LinkedIn	Founder Address	Company Industry	Company Website	Company LinkedIn	Company Blogpost	Company Angellist	Company Phone	Verification	5 Min Sent	10 Min Sent	Mail Status	Priority based on Reply	Thread ID	Created At	Updated At
+2d33c418...	Greg Dunlevy	Citla Energy	Member Board of Directors	gdunlevy@citlaenergy.com	LinkedIn	
+Santa Barbara, CA, USA
+["oil & energy"]
+Website	LinkedIn	-	-	556-819-5570	
+
+Not Sent	Not Sent	-	-	-	Oct 1, 2025, 12:29 PM	Oct 1, 2025, 12:29 PM
+ce34c946...	Tom Tyree	Antero Resources	Member Board of Directors	-	LinkedIn	
+Denver, CO, USA
+["oil & energy"]
+Website	LinkedIn	-	-	+1 303-357-7310	
+
+Not Sent	Not Sent	-	-	-	Oct 1, 2025, 12:29 PM	Oct 1, 2025, 12:29 PM
+b77bb2cb...	Clayton Smith	Texas Oil & Gas Association	Member Board of Directors	-	LinkedIn	
+Midland, TX, USA
+["oil & energy"]
+Website	LinkedIn	-	-	+1 512-478-6631	
+
+Not Sent	Not Sent	-	-	-	Oct 1, 2025, 12:29 PM	Oct 1, 2025, 12:29 PM
+df0ad1d7...	Jeff Shaw	National Fuel Gas Company	Member Board of Directors	shawj@natfuel.com	LinkedIn	
+United States
+["oil & energy","utilities"]
+Website	LinkedIn	-	-	+1 716-857-7000	
+
+Not Sent	Not Sent	-	-	-	Oct 1, 2025, 12:29 PM	Oct 1, 2025, 12:29 PM
+4a6400b4...	Darrell McKenna	BW Energy	Member Board of Directors	darrell.mckenna@bwenergy.no	LinkedIn	
+United States
+["oil & energy"]
+Website	LinkedIn	-	-	-	
+
+Not Sent	Not Sent	-	-	-	Oct 1, 2025, 12:29 PM	Oct 1, 2025, 12:29 PM
+b67e1b21...	James Trimble	Civitas Resources	Member Board of Directors	jtrimble@civiresources.com	LinkedIn	
+Greater Heights, Houston, TX, USA
+["oil & energy"]
+Website	LinkedIn	-	-	+1 720-440-6100	
+
+Not Sent	Not Sent	-	-	-	Oct 1, 2025, 12:29 PM	Oct 1, 2025, 12:29 PM
+fbb43a34...	John Harris	ExxonMobil	Member Board of Directors	john.harris@exxonmobil.com	LinkedIn	
+United States
+["oil & energy"]
+Website	LinkedIn	-	-	+1 972-940-6000	
+
+Not Sent	Not Sent	-	-	-	Oct 1, 2025, 12:29 PM	Oct 1, 2025, 12:29 PM
+3f36cd67...	Bill Byerley	Matador Resources Company	Member Board of Directors	bbyerley@matadorresources.com	LinkedIn	
+Houston, TX, USA
+["oil & energy"]
+Website	LinkedIn	-	-	+1 972-371-5200	
+
+Not Sent	Not Sent	-	-	-	Oct 1, 2025, 12:29 PM	Oct 1, 2025, 12:29 PM
+b8fbc559...	Hugh Connett	ARC Resources Ltd.	Member Board of Directors	hconnett@arcresources.com	LinkedIn	
+Greater Heights, Houston, TX, USA
+["oil & energy"]
+Website	LinkedIn	-	-	+1 403-503-8600	
+
+Not Sent	Not Sent	-	-	-	Oct 1, 2025, 12:29 PM	Oct 1, 2025, 12:29 PM
+300c91c4...	Kevin McCarthy	Chord Energy	Member Board of Directors	kevin.mccarthy@chordenergy.com	LinkedIn	
+Houston, TX, USA
+["oil & energy"]
+Website	LinkedIn	-	-	+1 281-404-9500	
+
+Not Sent	Not Sent	-	-	-	Oct 1, 2025, 12:29 PM	Oct 1, 2025, 12:29 PM
+bd50f770...	Doug Krenek	Sabine Oil & Gas	Member Board of Directors	dkrenek@sabineoil.com	LinkedIn	
+Richmond, TX, USA
+["oil & energy"]
+Website	LinkedIn	-	-	+1 832-242-9600	
+
+Not Sent	Not Sent	-	-	-	Oct 1, 2025, 12:29 PM	Oct 1, 2025, 12:29 PM
+252a72d5...	Per Staunstrup	Amni International Petroleum Development Company Limited	Chief Operating Officer (COO) & Executive Director	pstaunstrup@amni.com	LinkedIn	
+Houston, TX, USA
+["oil & energy"]
+Website	LinkedIn	-	-	+1 832-246-8330	
+
+Not Sent	Not Sent	-	-	-	Oct 1, 2025, 12:29 PM	Oct 1, 2025, 12:29 PM
+6c455a76...	Timothy Duncan	Expand Energy	Member Board of Directors	timothy.duncan@expandenergy.com	LinkedIn	
+Houston, TX, USA
+["oil & energy"]
+Website	LinkedIn	-	-	+1 832-796-1000	
+
+Not Sent	Not Sent	-	-	-	Oct 1, 2025, 12:29 PM	Oct 1, 2025, 12:29 PM
+85635bd8...	Angela Minas	Woodside Energy	Member of Board of Directors	angela.minas@woodside.com.au	LinkedIn	
+Houston, TX, USA
+["oil & energy"]
+Website	LinkedIn	-	-	+61 8 9348 4000	
+
+Not Sent	Not Sent	-	-	-	Oct 1, 2025, 12:29 PM	Oct 1, 2025, 12:29 PM
+353ce364...	Andy Inglis	Kosmos Energy	Chief Executive Officer and Chairman of the Board of Directors	ainglis@kosmosenergy.com	LinkedIn	
+Dallas, TX, USA
+["oil & energy"]
+Website	LinkedIn	-	-	+1 214-445-9600	
+
+Not Sent	Not Sent	-	-	-	Oct 1, 2025, 12:29 PM	Oct 1, 2025, 12:29 PM
+793f78cf...	Christi Wallace	ExxonMobil	Board of Directors	-	LinkedIn	
+Pittsburgh, PA, USA
+["oil & energy"]
+Website	LinkedIn	-	-	+1 972-940-6000	
+
+Not Sent	Not Sent	-	-	-	Oct 1, 2025, 12:29 PM	Oct 1, 2025, 12:29 PM
+d8c71dda...	Lee Canaan	EQT Corporation	Director, Board of Directors	clee@eqt.com	LinkedIn	
+Flower Mound, TX, USA
+["oil & energy"]
+Website	LinkedIn	-	-	+1 412-553-5700	
+
+Not Sent	Not Sent	-	-	-	Oct 1, 2025, 12:29 PM	Oct 1, 2025, 12:29 PM
+afa0ae44...	Robert Bose	Challenger Energy Group Plc (LON: CEG) (OTCQB:BHSPF)	Board Member, Non Executive Director	r.bose@cegplc.com	LinkedIn	
+New York, NY, USA
+["oil & energy"]
+Website	LinkedIn	-	-	+44 162 464 7883	
+
+Not Sent	Not Sent	-	-	-	Oct 1, 2025, 12:29 PM	Oct 1, 2025, 12:29 PM
+0ddd83df...	Pat Reddy	Hess Corporation	Board of Directors	preddy@hess.com	LinkedIn	
+Houston, TX, USA
+["oil & energy"]
+-	LinkedIn	-	-	+1 202-547-6441	
+
+Not Sent	Not Sent	-	-	-	Oct 1, 2025, 12:29 PM	Oct 1, 2025, 12:29 PM
+65db2428...	Grayson Pranin	SandRidge Energy	President, Chief Executive Officer and Chief Operations Officer	gpranin@sandridgeenergy.com	LinkedIn	
+Oklahoma City, OK, USA
+["oil & energy"]
+Website	LinkedIn	-	-	+1 405-429-5500	
+
+Not Sent	Not Sent	-	-	-	Oct 1, 2025, 12:29 PM	Oct 1, 2025, 12:29 PM

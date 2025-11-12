@@ -1,0 +1,67 @@
+ID	Founder Name	Company Name	Position	Founder Email	Founder LinkedIn	Founder Address	Company Industry	Company Website	Company LinkedIn	Company Blogpost	Company Angellist	Company Phone	Verification	5 Min Sent	10 Min Sent	Mail Status	Priority based on Reply	Thread ID	Created At	Updated At
+ea17725d...	Libin Jacob	AEG FUELS	Senior Director Sales and Supply (MESA, Turkey and Egypt)	ljacob@aegfuels.com	LinkedIn	
+Dubai - Dubai - United Arab Emirates
+["airlines/aviation"]
+Website	LinkedIn	-	-	+1 305-913-5253	
+
+Not Sent	Not Sent	-	-	-	Oct 1, 2025, 12:25 PM	Oct 1, 2025, 12:25 PM
+aedae25e...	Phillip Merwe	AEG FUELS	Senior Director of Sales & Supply - Africa	pvandermerwe@aegfuels.com	LinkedIn	
+Dubai - Dubai - United Arab Emirates
+["airlines/aviation"]
+Website	LinkedIn	-	-	+1 305-913-5253	
+
+Not Sent	Not Sent	-	-	-	Oct 1, 2025, 12:25 PM	Oct 1, 2025, 12:25 PM
+e9233542...	Prajeet Pareparambil	AEG FUELS	Director Network Strategy	ppareparambil@aegfuels.com	LinkedIn	
+Emirate Transport, Vehicle Technical Assessment, 9th Street - Abu Dhabi - United Arab Emirates
+["airlines/aviation"]
+Website	LinkedIn	-	-	+1 305-913-5253	
+
+Not Sent	Not Sent	-	-	-	Oct 1, 2025, 12:25 PM	Oct 1, 2025, 12:25 PM
+ff7d38be...	Ziad Alfa	Castrol	Marketing Director	-	LinkedIn	
+Dubai - Dubai - United Arab Emirates
+["oil & energy"]
+Website	LinkedIn	-	-	+44 84 5600 8125	
+
+Not Sent	Not Sent	-	-	-	Oct 1, 2025, 12:25 PM	Oct 1, 2025, 12:25 PM
+91aba597...	Ahmed Almheiri	AMCO Lubricants	Managing Director	-	LinkedIn	
+Dubai - Dubai - United Arab Emirates
+["oil & energy"]
+Website	LinkedIn	-	-	-	
+
+Not Sent	Not Sent	-	-	-	Oct 1, 2025, 12:24 PM	Oct 1, 2025, 12:24 PM
+e6834c31...	Martin Stork	Gulf Oil International Group	Vice President Global Technology	martin.stork@gulfoilltd.com	LinkedIn	
+Dubai - Dubai - United Arab Emirates
+["oil & energy"]
+-	LinkedIn	-	-	-	
+
+Not Sent	Not Sent	-	-	-	Oct 1, 2025, 12:24 PM	Oct 1, 2025, 12:24 PM
+86463a6e...	David Hall	Gulf Oil International Group	Vice President Research and Development	david.hall@gulfoilltd.com	LinkedIn	
+Dubai - Dubai - United Arab Emirates
+["oil & energy"]
+-	LinkedIn	-	-	-	
+
+Not Sent	Not Sent	-	-	-	Oct 1, 2025, 12:24 PM	Oct 1, 2025, 12:24 PM
+a9b319d6...	Ghaith Alghaith	AMCO Lubricants	Co-Owner	ghaith@amcolubricants.com	LinkedIn	
+Dubai - Dubai - United Arab Emirates
+["oil & energy"]
+Website	LinkedIn	-	-	-	
+
+Not Sent	Not Sent	-	-	-	Oct 1, 2025, 12:24 PM	Oct 1, 2025, 12:24 PM
+8be50a52...	Shahid Khan	NAF Grease & Lubricants Mfg LLC	Chief Executive Officer	shahid@eulubricants.com	LinkedIn	
+Emirates Rd - Sharjah - United Arab Emirates
+["oil & energy"]
+Website	LinkedIn	-	-	-	
+
+Not Sent	Not Sent	-	-	-	Oct 1, 2025, 12:24 PM	Oct 1, 2025, 12:24 PM
+b91a4d84...	Vijay Kumar	Bulwark Lubricants	Chief Operating Officer	vijay.kumar@bulwarkauto.co.uk	LinkedIn	
+Dubai - Dubai - United Arab Emirates
+["automotive"]
+Website	LinkedIn	-	-	-	
+
+Not Sent	Not Sent	-	-	-	Oct 1, 2025, 12:24 PM	Oct 1, 2025, 12:24 PM
+433c5cae...	William Dsouza	Bulwark Lubricants	Chief Executive Officer	wgd@bulwarkauto.co.uk	LinkedIn	
+Dubai - Dubai - United Arab Emirates
+["automotive"]
+Website	LinkedIn	-	-	-	
+
+Not Sent	Not Sent	-	-	-	Oct 1, 2025, 12:24 PM	Oct 1, 2025, 12:24 PM

@@ -1,0 +1,799 @@
+{
+    "nodes": [
+      {
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "minutes",
+                "minutesInterval": 10
+              }
+            ]
+          }
+        },
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          -2832,
+          1696
+        ],
+        "id": "a92bbae4-8473-467c-a19c-a41357ffb685",
+        "name": "Schedule Trigger1"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 2
+            },
+            "conditions": [
+              {
+                "id": "cf69ba86-864b-4d96-89f1-b79827c116af",
+                "leftValue": "={{ $json['Mail Status'] }}",
+                "rightValue": "=true",
+                "operator": {
+                  "type": "string",
+                  "operation": "equals",
+                  "name": "filter.operator.equals"
+                }
+              }
+            ],
+            "combinator": "or"
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          -2176,
+          1696
+        ],
+        "id": "3195fdaf-d5f0-40fa-b6c8-1f8c0b840425",
+        "name": "if Mail status1"
+      },
+      {
+        "parameters": {
+          "resource": "thread",
+          "operation": "get",
+          "threadId": "={{ $json['Thread ID'] }}",
+          "simple": false,
+          "options": {}
+        },
+        "type": "n8n-nodes-base.gmail",
+        "typeVersion": 2.1,
+        "position": [
+          -1760,
+          1968
+        ],
+        "id": "bf453e96-3dc5-473e-9668-39446013f6b6",
+        "name": "Get a thread1",
+        "webhookId": "4ac2ff13-019c-4bcf-8d12-e9088ba8fc4a",
+        "credentials": {
+          "gmailOAuth2": {
+            "id": "8xkv8X613x1CqXsE",
+            "name": "Gmail account 2"
+          }
+        },
+        "disabled": true
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": false,
+              "leftValue": "",
+              "typeValidation": "loose",
+              "version": 2
+            },
+            "conditions": [
+              {
+                "id": "08c2ed31-e9a1-4e34-a6b2-c2b20cb19a84",
+                "leftValue": "={{ $json.messages[1].snippet }}",
+                "rightValue": "",
+                "operator": {
+                  "type": "string",
+                  "operation": "notExists",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "looseTypeValidation": true,
+          "options": {
+            "ignoreCase": true
+          }
+        },
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          -1104,
+          1696
+        ],
+        "id": "814fb611-2013-494c-ace2-fd57bc3ccd84",
+        "name": "If3"
+      },
+      {
+        "parameters": {
+          "operation": "getAll",
+          "tableId": "scraped Data",
+          "returnAll": true
+        },
+        "type": "n8n-nodes-base.supabase",
+        "typeVersion": 1,
+        "position": [
+          -2400,
+          1696
+        ],
+        "id": "ed643c3b-11cd-48b7-86be-2e941ef5a45f",
+        "name": "Get many rows2",
+        "credentials": {
+          "supabaseApi": {
+            "id": "o3rLq66uVGgi3KGO",
+            "name": "Supabase account 3"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "operation": "update",
+          "tableId": "scraped Data",
+          "filters": {
+            "conditions": [
+              {
+                "keyName": "Thread ID",
+                "condition": "eq",
+                "keyValue": "={{ $json.id }}"
+              }
+            ]
+          },
+          "fieldsUi": {
+            "fieldValues": [
+              {
+                "fieldId": "Mail Replys",
+                "fieldValue": "={{ $json.messages[1].snippet }}"
+              }
+            ]
+          }
+        },
+        "type": "n8n-nodes-base.supabase",
+        "typeVersion": 1,
+        "position": [
+          -448,
+          2176
+        ],
+        "id": "84e22266-88a4-4a72-a76c-c9395fb0ba8d",
+        "name": "Update a row3",
+        "credentials": {
+          "supabaseApi": {
+            "id": "o3rLq66uVGgi3KGO",
+            "name": "Supabase account 3"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "operation": "update",
+          "tableId": "scraped Data",
+          "filters": {
+            "conditions": [
+              {
+                "keyName": "id",
+                "condition": "eq",
+                "keyValue": "={{ $('Get many rows2').item.json.id }}"
+              }
+            ]
+          },
+          "fieldsUi": {
+            "fieldValues": [
+              {
+                "fieldId": "2nd Follow-Up Sent (10 days)",
+                "fieldValue": "={{ $json.bodyPreview }}"
+              },
+              {
+                "fieldId": "Thread ID",
+                "fieldValue": "={{ $('Get many messages3').item.json.id }}"
+              }
+            ]
+          }
+        },
+        "type": "n8n-nodes-base.supabase",
+        "typeVersion": 1,
+        "position": [
+          368,
+          1504
+        ],
+        "id": "cee742c8-94b2-41c9-829d-121991e5dc9d",
+        "name": "Update a row5",
+        "credentials": {
+          "supabaseApi": {
+            "id": "o3rLq66uVGgi3KGO",
+            "name": "Supabase account 3"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "options": {}
+        },
+        "type": "n8n-nodes-base.splitInBatches",
+        "typeVersion": 3,
+        "position": [
+          -512,
+          1552
+        ],
+        "id": "cd02992c-e421-4fd3-b016-a6dc809a6cd7",
+        "name": "Loop Over Items2"
+      },
+      {
+        "parameters": {
+          "url": "https://maps.googleapis.com/maps/api/geocode/json",
+          "sendQuery": true,
+          "queryParameters": {
+            "parameters": [
+              {
+                "name": "address",
+                "value": "={{ $('Get many rows2').item.json[\"Founder Address\"] }}"
+              },
+              {
+                "name": "key",
+                "value": "AIzaSyBhh7hQFAmU5U1azSjVvRgss4W-pOf-yns"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          128,
+          1760
+        ],
+        "id": "1c4c112d-4f57-4dc9-ae6e-6dc07a18a7e3",
+        "name": "Get Timezone from Coordinates2"
+      },
+      {
+        "parameters": {
+          "url": "https://maps.googleapis.com/maps/api/timezone/json",
+          "sendQuery": true,
+          "queryParameters": {
+            "parameters": [
+              {
+                "name": "location",
+                "value": "={{ $json.results[0].geometry.location.lat }},{{ $json.results[0].geometry.location.lng }}"
+              },
+              {
+                "name": "timestamp",
+                "value": "={{ Math.floor(Date.now() / 1000) }}"
+              },
+              {
+                "name": "key",
+                "value": "AIzaSyBhh7hQFAmU5U1azSjVvRgss4W-pOf-yns"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          400,
+          1760
+        ],
+        "id": "eaae8789-474a-47c4-bd6b-2a9d14be1ac1",
+        "name": "HTTP Request2"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 2
+            },
+            "conditions": [
+              {
+                "id": "e2f130e8-a615-4235-9d65-e1e6c30ddda0",
+                "leftValue": "={{ $json.isWorkingHours }}",
+                "rightValue": "",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          928,
+          1760
+        ],
+        "id": "b7f8cab6-8e09-4a92-ae7b-179bd19f6d5d",
+        "name": "If8"
+      },
+      {
+        "parameters": {
+          "jsCode": "// Get the input item (which should contain both the HTTP response and loop data)\nconst inputItem = $input.item.json;\n\n// The HTTP Request1 output should contain the timezone API response\nconst timezone = inputItem.timeZoneId || 'UTC';\nconst timezoneName = inputItem.timeZoneName || 'Unknown';\nconst rawOffset = Number(inputItem.rawOffset || 0);\nconst dstOffset = Number(inputItem.dstOffset || 0);\n\n// The founder address should be passed through from the loop\n// Check if it's in the current item or if we need to get it from the loop context\nlet founderAddress = inputItem['Founder Address'] || inputItem.founderAddress;\n\n// If not found in current item, try to get it from the workflow context\nif (!founderAddress) {\n  // Alternative: get from the loop context if available\n  const loopData = $input.context?.loop?.item?.json;\n  founderAddress = loopData?.['Founder Address'] || loopData?.founderAddress || 'Unknown';\n}\n\nconsole.log('Input item:', inputItem);\nconsole.log('Extracted timezone:', timezone);\nconsole.log('Founder Address:', founderAddress);\n\n// Function to check if it's working hours (9 AM - 6 PM, Monday-Friday)\nfunction isWorkingHours(timezone) {\n  const now = new Date();\n  \n  // Convert to the recipient's timezone using IANA timezone ID\n  const localTime = new Date(now.toLocaleString(\"en-US\", {timeZone: timezone}));\n  \n  const hour = localTime.getHours();\n  const day = localTime.getDay(); // 0 = Sunday, 6 = Saturday\n  \n  console.log('Current UTC time:', now);\n  console.log('Local time in', timezone, ':', localTime);\n  console.log('Hour:', hour, 'Day:', day);\n  \n  // Check if it's Monday-Friday (1-5) and between 9 AM - 6 PM\n  const isWeekday = day >= 1 && day <= 5;\n  const isWorkingTime = hour >= 9 && hour < 18;\n  \n  return isWeekday && isWorkingTime;\n}\n\n// Check working hours\nconst isWorking = isWorkingHours(timezone);\nconst currentTime = new Date().toLocaleString(\"en-US\", {timeZone: timezone});\nconst currentTimeFormatted = new Date().toLocaleString(\"en-US\", {\n  timeZone: timezone,\n  weekday: 'long',\n  year: 'numeric',\n  month: 'long',\n  day: 'numeric',\n  hour: '2-digit',\n  minute: '2-digit',\n  second: '2-digit'\n});\n\n// Calculate next working day if outside hours\nlet nextWorkingDay = null;\nif (!isWorking) {\n  const now = new Date();\n  const localTime = new Date(now.toLocaleString(\"en-US\", {timeZone: timezone}));\n  const day = localTime.getDay();\n  const hour = localTime.getHours();\n  \n  if (day === 0) { // Sunday\n    nextWorkingDay = 'Monday 9:00 AM';\n  } else if (day === 6) { // Saturday\n    nextWorkingDay = 'Monday 9:00 AM';\n  } else if (hour < 9) { // Before 9 AM\n    nextWorkingDay = 'Today 9:00 AM';\n  } else if (hour >= 18) { // After 6 PM\n    nextWorkingDay = 'Tomorrow 9:00 AM';\n  }\n}\n\nconsole.log('Recipient Address:', founderAddress);\nconsole.log('Detected Timezone:', timezone);\nconsole.log('Timezone Name:', timezoneName);\nconsole.log('Current Time in Recipient Timezone:', currentTimeFormatted);\nconsole.log('Is Working Hours:', isWorking);\nconsole.log('Next Working Day:', nextWorkingDay);\n\n// Return the result with all data passed through\nreturn [{\n  json: {\n    ...inputItem, // Pass through all data from HTTP Request1\n    founderAddress: founderAddress, // Ensure founder address is included\n    timezone: timezone,\n    timezoneName: timezoneName,\n    currentTime: currentTime,\n    currentTimeFormatted: currentTimeFormatted,\n    isWorkingHours: isWorking,\n    shouldSendEmail: isWorking,\n    nextWorkingDay: nextWorkingDay,\n    rawOffset: rawOffset,\n    dstOffset: dstOffset\n  }\n}];\n"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          672,
+          1760
+        ],
+        "id": "cc1c1754-a131-4526-9935-f3f05732e1d7",
+        "name": "Code5"
+      },
+      {
+        "parameters": {
+          "promptType": "define",
+          "text": "=\"Read the following email reply and based on its urgency, intent, clarity of interest, and any requests for action, classify its priority level as one of these: 'High Priority', 'Medium Priority', or 'Low Priority'. Provide only the priority label as the response, without any explanation or summary.\n\nEmail Reply:\n{{ $json['Mail Replys'] }}\n\nPriority Level:\"",
+          "options": {}
+        },
+        "type": "@n8n/n8n-nodes-langchain.agent",
+        "typeVersion": 2.2,
+        "position": [
+          -240,
+          2176
+        ],
+        "id": "d9e8f7ad-a9f2-48f9-9440-db1ea5313163",
+        "name": "AI Agent3"
+      },
+      {
+        "parameters": {
+          "model": {
+            "__rl": true,
+            "value": "gpt-4o-mini",
+            "mode": "list",
+            "cachedResultName": "gpt-4o-mini"
+          },
+          "options": {}
+        },
+        "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+        "typeVersion": 1.2,
+        "position": [
+          -272,
+          2368
+        ],
+        "id": "724d6108-4545-46c8-b5c4-604f0c4d8a06",
+        "name": "OpenAI Chat Model3",
+        "credentials": {
+          "openAiApi": {
+            "id": "MZt4crpohuUr9Rtj",
+            "name": "OpenAI NenoTecgnology"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "operation": "update",
+          "tableId": "scraped Data",
+          "filters": {
+            "conditions": [
+              {
+                "keyName": "id",
+                "condition": "eq",
+                "keyValue": "={{ $('Get many rows2').item.json.id }}"
+              }
+            ]
+          },
+          "fieldsUi": {
+            "fieldValues": [
+              {
+                "fieldId": "Priority based on Reply",
+                "fieldValue": "={{ $json.output }}"
+              }
+            ]
+          }
+        },
+        "type": "n8n-nodes-base.supabase",
+        "typeVersion": 1,
+        "position": [
+          112,
+          2176
+        ],
+        "id": "977b2178-9ad0-489e-a9f3-4d6dd85377f9",
+        "name": "Update a row12",
+        "credentials": {
+          "supabaseApi": {
+            "id": "o3rLq66uVGgi3KGO",
+            "name": "Supabase account 3"
+          }
+        }
+      },
+      {
+        "parameters": {},
+        "type": "n8n-nodes-base.wait",
+        "typeVersion": 1.1,
+        "position": [
+          -2624,
+          1696
+        ],
+        "id": "c746d5d7-e482-40df-aa4f-1f3975c57dcb",
+        "name": "Wait1",
+        "webhookId": "ef69e9ea-b59d-4175-9aea-f8a58576170c"
+      },
+      {
+        "parameters": {
+          "toRecipients": "={{ $('Get many rows2').item.json['Founder Email'] }}",
+          "bodyContent": "={{ $json['Email content'] }}",
+          "additionalFields": {
+            "bodyContentType": "html"
+          }
+        },
+        "type": "n8n-nodes-base.microsoftOutlook",
+        "typeVersion": 2,
+        "position": [
+          1408,
+          1824
+        ],
+        "id": "f2a61058-9a98-4d34-8d91-2d2ec445bfb9",
+        "name": "Send a message6",
+        "webhookId": "88365abb-b283-4019-b8be-8e993ef36e13",
+        "credentials": {
+          "microsoftOutlookOAuth2Api": {
+            "id": "nlDpHVHOfUv0vOhc",
+            "name": "Microsoft Outlook Pallavi COROFY"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "operation": "getAll",
+          "limit": 1,
+          "filtersUI": {
+            "values": {
+              "filterBy": "search",
+              "search": "={{ $('If3').item.json.subject }}"
+            }
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.microsoftOutlook",
+        "typeVersion": 2,
+        "position": [
+          1680,
+          1856
+        ],
+        "id": "ce69f60f-d204-4bb6-8b65-fc0ae3ed90c0",
+        "name": "Get many messages3",
+        "webhookId": "92c7792c-5fbc-4821-b969-dc7eb5815659",
+        "credentials": {
+          "microsoftOutlookOAuth2Api": {
+            "id": "nlDpHVHOfUv0vOhc",
+            "name": "Microsoft Outlook Pallavi COROFY"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "operation": "get",
+          "messageId": {
+            "__rl": true,
+            "value": "={{ $json['Thread ID'] }}",
+            "mode": "id"
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.microsoftOutlook",
+        "typeVersion": 2,
+        "position": [
+          -1712,
+          1600
+        ],
+        "id": "fc879f50-ce1e-46b1-b094-9d9ac1c4b6da",
+        "name": "Get a message",
+        "webhookId": "39337944-d245-4803-a014-cfbd21dd7e00",
+        "credentials": {
+          "microsoftOutlookOAuth2Api": {
+            "id": "nlDpHVHOfUv0vOhc",
+            "name": "Microsoft Outlook Pallavi COROFY"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "assignments": {
+            "assignments": [
+              {
+                "id": "f7924fbd-0ad7-458d-b957-cc8244391655",
+                "name": "bodyPreview",
+                "value": true,
+                "type": "boolean"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          -160,
+          1488
+        ],
+        "id": "773df2fd-78ba-421e-9078-a1198924cf57",
+        "name": "Edit Fields"
+      },
+      {
+        "parameters": {
+          "operation": "sendAndWait",
+          "toRecipients": "={{ $json.to[0] }}",
+          "subject": "={{ $json.subject }}",
+          "message": "={{ $json.bodyPreview }}",
+          "responseType": "customForm",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.microsoftOutlook",
+        "typeVersion": 2,
+        "position": [
+          -1504,
+          1600
+        ],
+        "id": "8555803f-b4e9-4fdb-8e56-20af8dcde224",
+        "name": "Send message and wait for response",
+        "webhookId": "94abf734-c7b8-46c4-8f3f-459cbfd65efa",
+        "credentials": {
+          "microsoftOutlookOAuth2Api": {
+            "id": "nlDpHVHOfUv0vOhc",
+            "name": "Microsoft Outlook Pallavi COROFY"
+          }
+        }
+      }
+    ],
+    "connections": {
+      "Schedule Trigger1": {
+        "main": [
+          [
+            {
+              "node": "Wait1",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "if Mail status1": {
+        "main": [
+          [
+            {
+              "node": "Get a message",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Get a thread1": {
+        "main": [
+          []
+        ]
+      },
+      "If3": {
+        "main": [
+          [
+            {
+              "node": "Loop Over Items2",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Update a row3",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Get many rows2": {
+        "main": [
+          [
+            {
+              "node": "if Mail status1",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Update a row3": {
+        "main": [
+          [
+            {
+              "node": "AI Agent3",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Loop Over Items2": {
+        "main": [
+          [
+            {
+              "node": "Edit Fields",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Get Timezone from Coordinates2",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Get Timezone from Coordinates2": {
+        "main": [
+          [
+            {
+              "node": "HTTP Request2",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "HTTP Request2": {
+        "main": [
+          [
+            {
+              "node": "Code5",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "If8": {
+        "main": [
+          [
+            {
+              "node": "Send a message6",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Loop Over Items2",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Code5": {
+        "main": [
+          [
+            {
+              "node": "If8",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "AI Agent3": {
+        "main": [
+          [
+            {
+              "node": "Update a row12",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "OpenAI Chat Model3": {
+        "ai_languageModel": [
+          [
+            {
+              "node": "AI Agent3",
+              "type": "ai_languageModel",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Wait1": {
+        "main": [
+          [
+            {
+              "node": "Get many rows2",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Send a message6": {
+        "main": [
+          [
+            {
+              "node": "Get many messages3",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Get many messages3": {
+        "main": [
+          [
+            {
+              "node": "Loop Over Items2",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Get a message": {
+        "main": [
+          [
+            {
+              "node": "Send message and wait for response",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Edit Fields": {
+        "main": [
+          [
+            {
+              "node": "Update a row5",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Send message and wait for response": {
+        "main": [
+          [
+            {
+              "node": "If3",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "pinData": {
+      "Schedule Trigger1": [
+        {
+          "timestamp": "2025-10-08T13:09:40.734+05:30",
+          "Readable date": "October 8th 2025, 1:09:40 pm",
+          "Readable time": "1:09:40 pm",
+          "Day of week": "Wednesday",
+          "Year": "2025",
+          "Month": "October",
+          "Day of month": "08",
+          "Hour": "13",
+          "Minute": "09",
+          "Second": "40",
+          "Timezone": "Asia/Kolkata (UTC+05:30)"
+        }
+      ]
+    },
+    "meta": {
+      "templateCredsSetupCompleted": true,
+      "instanceId": "10e4e6c1eea9300223cd6b73408d4f00c50de7b03f854dae5b15fcc57988166b"
+    }
+  }

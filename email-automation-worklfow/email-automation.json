@@ -1,0 +1,1376 @@
+{
+    "nodes": [
+      {
+        "parameters": {},
+        "type": "n8n-nodes-base.manualTrigger",
+        "typeVersion": 1,
+        "position": [
+          -2976,
+          -224
+        ],
+        "id": "86fa2602-4288-451a-acde-91391dcba4bb",
+        "name": "When clicking ‘Execute workflow’"
+      },
+      {
+        "parameters": {
+          "jsCode": "// Get the AI Agent's output\nconst aiOutput = $input.first().json.output;\n\n// Extract subject and body from AI Agent's response\nlet subject = \"Partnership Opportunity with Corofy Chemical Specialist\";\nlet emailBody = aiOutput;\n\n// Try to extract subject line if AI Agent formatted it\nconst subjectMatch = aiOutput.match(/Subject:\\s*(.+?)(?:\\n|$)/i);\nif (subjectMatch) {\n  subject = subjectMatch[1].trim();\n  // Remove the subject line from the email body\n  emailBody = aiOutput.replace(/Subject:\\s*.+?(?:\\n|$)/i, '').trim();\n}\n\n// Get recipient details from the current loop iteration\nconst recipientData = $('Loop Over Items3').item.json;\nconst email = recipientData['Founder Email'] || recipientData['Email'] || recipientData['Contact Email'];\nconst name = recipientData['Founder Name'] || recipientData['Name'] || recipientData['Contact Name'] || \"there\";\nconst companyName = recipientData['Company Name'] || recipientData['Company'] || \"your company\";\nconst industry = recipientData['Company\\'s Industry'] || 'your industry';\n\nconsole.log('Processing for company:', companyName);\nconsole.log('Recipient email:', email);\nconsole.log('Recipient name:', name);\nconsole.log('Industry:', industry);\n\n// Enhanced placeholder replacement function\nfunction replaceAllPlaceholders(text, name, companyName, industry) {\n  return text\n    // Replace all bracket placeholders with actual values\n    .replace(/\\[Target Company Name\\]/gi, companyName)\n    .replace(/\\[Recipient's Name\\]/gi, name)\n    .replace(/\\[Your Name\\]/gi, 'Mehul Parmar')\n    .replace(/\\[Your Full Name\\]/gi, 'Mehul Parmar')\n    .replace(/\\[Your Job Title\\]/gi, 'Director – Commercial & Technical')\n    .replace(/\\[Your Position\\]/gi, 'Director – Commercial & Technical')\n    .replace(/\\[Your Contact Information\\]/gi, 'Cell: +971 554306280')\n    .replace(/\\[Company Website URL\\]/gi, 'www.corofychem.com')\n    .replace(/\\[Website URL\\]/gi, 'www.corofychem.com')\n    .replace(/\\[mention target company's industry based on scraped data\\]/gi, industry)\n    .replace(/\\[specific product\\/service mentioned in the scraped data\\]/gi, 'your products and services')\n    .replace(/\\[relevant Corofy products or services\\]/gi, 'our specialized chemical solutions')\n    .replace(/\\[specific benefits related to their products\\/services\\]/gi, 'operational efficiency and product quality')\n    .replace(/\\[specific aspect of their business\\]/gi, 'your operations')\n    .replace(/\\[specific applications relevant to their products\\/services\\]/gi, 'your specific needs')\n    .replace(/\\[specific solutions or chemicals\\]/gi, 'specialized solutions')\n    // Remove any remaining placeholders in brackets\n    .replace(/\\[.*?\\]/g, '')\n    // Fix incomplete sentences and missing names\n    .replace(/Dear,\\s*$/gm, `Dear ${name},`)\n    .replace(/My name is,\\s*and/g, 'My name is Mehul Parmar, and')\n    .replace(/industries such as\\.\\s*$/gm, `industries such as ${industry}.`)\n    .replace(/such as\\.\\s*$/gm, `such as ${industry}.`);\n}\n\n// Apply placeholder replacement to both subject and body\nsubject = replaceAllPlaceholders(subject, name, companyName, industry);\nemailBody = replaceAllPlaceholders(emailBody, name, companyName, industry);\n\n// Convert plain text email to HTML format\nfunction textToHtml(text) {\n  const lines = text.split('\\n').filter(line => line.trim());\n  let html = '<div style=\"font-family: Arial, sans-serif; color: #333; line-height: 1.6;\">';\n  \n  lines.forEach(line => {\n    const trimmed = line.trim();\n    if (trimmed) {\n      if (trimmed.includes('Best regards') || trimmed.includes('Sincerely')) {\n        html += `<p style=\"margin-top: 20px;\">${trimmed}</p>`;\n      } else if (/^[📞✉️🌐]/.test(trimmed)) {\n        html += `<p style=\"margin: 5px 0;\">${trimmed}</p>`;\n      } else {\n        html += `<p style=\"margin: 15px 0;\">${trimmed}</p>`;\n      }\n    }\n  });\n  \n  html += '</div>';\n  return html;\n}\n\n// Create the email HTML\nconst htmlContent = `\n<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"UTF-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n<title>Email from Corofy LLC</title>\n<style>\n  body { \n    font-family: Arial, sans-serif; \n    background-color: #f7f7f7; \n    margin: 0; \n    padding: 0; \n  }\n  .container { \n    max-width: 600px; \n    margin: 20px auto; \n    background-color: #fff; \n    padding: 30px; \n    border-radius: 10px; \n    box-shadow: 0 2px 6px rgba(0,0,0,0.1);\n  }\n  .signature {\n    margin-top: 30px;\n    font-size: 14px;\n    color: #333;\n  }\n  .company-info {\n    border-top: 1px solid #ddd;\n    margin-top: 30px;\n    padding-top: 20px;\n    font-size: 14px;\n    color: #666;\n  }\n</style>\n</head>\n<body>\n  <div class=\"container\">\n    ${textToHtml(emailBody)}\n    \n    <div class=\"signature\">\n      <p><strong>Mehul Parmar</strong><br>\n      Director – Commercial & Technical<br>\n      Cell: <a href=\"tel:+971554306280\" style=\"color:#0066cc; text-decoration:none;\">+971 554306280</a></p>\n    </div>\n    \n    <div class=\"company-info\">\n      <p><strong>Corofy LLC</strong><br>\n      510 – Goldcrest Executive, Cluster C, JLT – Dubai – United Arab Emirates<br>\n      Tel: <a href=\"tel:+97142715611\" style=\"color:#0066cc; text-decoration:none;\">+971 4 271 5611</a> | \n      <a href=\"https://www.corofychem.com\" style=\"color:#0066cc; text-decoration:none;\">www.corofychem.com</a><br>\n      Email: <a href=\"mailto:mehul@corofychem.com\" style=\"color:#0066cc; text-decoration:none;\">mehul@corofychem.com</a><br>\n      <small style=\"color:#777;\">ISO 9001:2015 Certified from UKAS Management Systems</small></p>\n    </div>\n  </div>\n</body>\n</html>\n`;\n\nconsole.log('Final subject:', subject);\nconsole.log('Email body:', emailBody);\n\n// Return the formatted email data\nreturn [{\n  json: {\n    to: email,\n    subject: subject,\n    html: htmlContent,\n    recipientName: name,\n    companyName: companyName,\n    aiGeneratedContent: aiOutput,\n    originalData: recipientData\n  }\n}];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -288,
+          -384
+        ],
+        "id": "d7df8ade-1bce-4136-8b62-67bfafda0a28",
+        "name": "Code2"
+      },
+      {
+        "parameters": {
+          "operation": "getAll",
+          "tableId": "scraped Data",
+          "returnAll": true
+        },
+        "type": "n8n-nodes-base.supabase",
+        "typeVersion": 1,
+        "position": [
+          -2736,
+          32
+        ],
+        "id": "08519a5b-c132-4d1f-ad87-a9746b15920f",
+        "name": "Get many rows3",
+        "credentials": {
+          "supabaseApi": {
+            "id": "o3rLq66uVGgi3KGO",
+            "name": "Supabase account 3"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "operation": "update",
+          "tableId": "scraped Data",
+          "filters": {
+            "conditions": [
+              {
+                "keyName": "id",
+                "condition": "eq",
+                "keyValue": "={{ $('Get many rows3').item.json.id }}"
+              }
+            ]
+          },
+          "fieldsUi": {
+            "fieldValues": [
+              {
+                "fieldId": "Mail Status",
+                "fieldValue": "={{ $('Send a message5').item.json.success }}"
+              },
+              {
+                "fieldId": "Thread ID",
+                "fieldValue": "={{ $json.id }}"
+              }
+            ]
+          }
+        },
+        "type": "n8n-nodes-base.supabase",
+        "typeVersion": 1,
+        "position": [
+          1856,
+          224
+        ],
+        "id": "bbf87fa3-3dc5-48e5-b8fa-05984aef9193",
+        "name": "Update a row6",
+        "credentials": {
+          "supabaseApi": {
+            "id": "o3rLq66uVGgi3KGO",
+            "name": "Supabase account 3"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "options": {
+            "reset": false
+          }
+        },
+        "type": "n8n-nodes-base.splitInBatches",
+        "typeVersion": 3,
+        "position": [
+          -1808,
+          0
+        ],
+        "id": "9e48b14f-0709-4460-873b-c81b61dc7e34",
+        "name": "Loop Over Items3"
+      },
+      {
+        "parameters": {
+          "operation": "scrape",
+          "url": "={{ $json['Company Website'] }}",
+          "requestOptions": {}
+        },
+        "type": "@mendable/n8n-nodes-firecrawl.firecrawl",
+        "typeVersion": 1,
+        "position": [
+          -992,
+          -384
+        ],
+        "id": "ab60f782-3faa-4a6a-905e-1c63fe4b8a37",
+        "name": "Scrape a url and get its content1",
+        "credentials": {
+          "firecrawlApi": {
+            "id": "3SuzHcR28PstGkqw",
+            "name": "Firecrawl Demo-Avi"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "// Extract emails from Firecrawl scraped data\n// This code works in n8n JavaScript node\n\n// Get the input data from previous node\nconst inputData = $input.all();\n\n// Function to extract emails using regex\nfunction extractEmails(text) {\n  if (!text) return [];\n  \n  // Regex pattern to match email addresses\n  const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}/g;\n  \n  // Find all matches\n  const matches = text.match(emailRegex);\n  \n  // Return unique emails\n  return matches ? [...new Set(matches)] : [];\n}\n\n// Process each item from Firecrawl\nconst results = inputData.map((item, index) => {\n  const data = item.json;\n  \n  // Initialize array to store all emails found\n  let allEmails = [];\n  \n  // Check if data exists and is an array\n  if (Array.isArray(data)) {\n    data.forEach(entry => {\n      if (entry.success && entry.data) {\n        // Extract from markdown content\n        if (entry.data.markdown) {\n          const markdownEmails = extractEmails(entry.data.markdown);\n          allEmails = allEmails.concat(markdownEmails);\n        }\n        \n        // Extract from metadata if exists\n        if (entry.data.metadata) {\n          const metadataStr = JSON.stringify(entry.data.metadata);\n          const metadataEmails = extractEmails(metadataStr);\n          allEmails = allEmails.concat(metadataEmails);\n        }\n      }\n    });\n  } else if (data.success && data.data) {\n    // Handle single object case\n    if (data.data.markdown) {\n      const markdownEmails = extractEmails(data.data.markdown);\n      allEmails = allEmails.concat(markdownEmails);\n    }\n    \n    if (data.data.metadata) {\n      const metadataStr = JSON.stringify(data.data.metadata);\n      const metadataEmails = extractEmails(metadataStr);\n      allEmails = allEmails.concat(metadataEmails);\n    }\n  }\n  \n  // Remove duplicates\n  const uniqueEmails = [...new Set(allEmails)];\n  \n  return {\n    json: {\n      emails: uniqueEmails,\n      emailCount: uniqueEmails.length,\n      emailList: uniqueEmails.join(', '),\n      originalData: data\n    }\n  };\n});\n\nreturn results;"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -800,
+          -384
+        ],
+        "id": "b9da2eee-3242-4d01-8719-4ee3c4ec632c",
+        "name": "Code3"
+      },
+      {
+        "parameters": {
+          "promptType": "define",
+          "text": "=You are an AI email writer for Corofy Chemical Specialist (Corofy LLC), a global chemical supplier based in Dubai.\n\nYour task: Generate a professional, personalized cold outreach email.\n\nInput: Scraped data about a target company (its products, services, industry, location, etc.).\n{{ $json.originalData.data.markdown }}\n\nSteps:\n1. Analyze the scraped data to understand what the company does, its focus industry, and possible needs. \n2. Identify which of the following categories best matches the company’s industry or product focus:\n   - Lubricant Industry\n   - Oil & Gas Industry\n   - Agrochemical Industry\n3. Based on the detected industry, include a short, relevant paragraph (2–3 lines) mentioning the key products Corofy offers in that sector.\n\nKey Lubricant Chemicals we offer include:\nSuccinic Anhydride & Succinimides\nViscosity Index Improvers\nPour Point Depressants\nAnti-wear Additives\nDetergent Additives\nDispersant Additives\nAntioxidants\nCorrosion Inhibitors\nMetal Deactivators\nBase Oils & Grease Additives\n\nKey Oil & Gas Chemicals we offer include:\nCorrosion Inhibitors\nScale Inhibitors\nDemulsifiers\nPour Point Depressants\nDrilling Mud Chemicals\nEmulsion Breakers\nBiocides\nDefoamers\nFlow Improvers\nProduction & Refinery Chemicals\n\nKey Agro Chemicals we offer include:\nCABS – Calcium Alkyl Benzene Sulfonate\nCastor Oil Ethoxylates\nNonylphenol Ethoxylates\nStyrenated Phenol Ethoxylate\nAlcohol Ethoxylates\nTallow Amine Ethoxylates\nPolyethylene Glycol (PEG)\nAdjuvants, Surfactants, Emulsifiers\nDefoamers, Dispersing & Wetting Agents\nMicro Nutrients, Technicals and Formulations\n\n4. Write a customized outreach email that introduces Corofy Chemical Specialist as a trusted global supplier.\n5. Clearly highlight how Corofy’s chemicals, solutions, or expertise could benefit the target company’s specific business (based on the scraped data and matched product category).\n6. Keep the email clear, polite, and professional.\n7. End the email with:\n   “Best Regards,”\n   Do not include any sender details or contact information after this line — the HTML template will handle it.\n\nEmail Style:\n- Short and to the point (150–200 words).\n- Personalize with the company name and relevant context from scraped data.\n- Mention location or region naturally if available (e.g., “serving clients across [region]”).\n- Maintain a warm yet concise tone.\n- Avoid buzzwords or filler phrases (e.g., “synergy”, “cutting-edge”).\n- Avoid listing products unrelated to the detected industry.\n",
+          "options": {}
+        },
+        "type": "@n8n/n8n-nodes-langchain.agent",
+        "typeVersion": 2.2,
+        "position": [
+          -576,
+          -384
+        ],
+        "id": "bb4cfe13-b1a7-4538-91a5-176b4b69bb8c",
+        "name": "AI Agent"
+      },
+      {
+        "parameters": {
+          "model": {
+            "__rl": true,
+            "value": "gpt-4o-mini",
+            "mode": "list",
+            "cachedResultName": "gpt-4o-mini"
+          },
+          "options": {}
+        },
+        "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+        "typeVersion": 1.2,
+        "position": [
+          -608,
+          -208
+        ],
+        "id": "b1cac5e1-d6dd-4b07-a5f1-127bc2f44b20",
+        "name": "OpenAI Chat Model",
+        "credentials": {
+          "openAiApi": {
+            "id": "wldbLacUlxbnTuTO",
+            "name": "Avi's Key"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose",
+              "version": 2
+            },
+            "conditions": [
+              {
+                "id": "4db511da-b1e1-47a3-a192-8ec1e96d88fa",
+                "leftValue": "={{ $json.Verification }}",
+                "rightValue": "",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "looseTypeValidation": true,
+          "options": {}
+        },
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          -2304,
+          32
+        ],
+        "id": "7af3aca8-18da-4da0-bb04-aee2f080c5ed",
+        "name": "If4"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 2
+            },
+            "conditions": [
+              {
+                "id": "1dae3922-1102-4c55-8c2b-791802a476e2",
+                "leftValue": "={{ $json['Mail Status'] }}",
+                "rightValue": "SENT",
+                "operator": {
+                  "type": "string",
+                  "operation": "notEquals"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          -2080,
+          32
+        ],
+        "id": "93787539-c955-4444-ae49-fab08d2e43ff",
+        "name": "If5"
+      },
+      {
+        "parameters": {
+          "operation": "update",
+          "tableId": "scraped Data",
+          "filters": {
+            "conditions": [
+              {
+                "keyName": "id",
+                "condition": "eq",
+                "keyValue": "={{ $('Get many rows3').item.json.id }}"
+              }
+            ]
+          },
+          "fieldsUi": {
+            "fieldValues": [
+              {
+                "fieldId": "Email content",
+                "fieldValue": "={{ $('Code2').item.json.html }}"
+              },
+              {
+                "fieldId": "Email Subject",
+                "fieldValue": "={{ $('Code2').item.json.subject }}"
+              }
+            ]
+          }
+        },
+        "type": "n8n-nodes-base.supabase",
+        "typeVersion": 1,
+        "position": [
+          832,
+          -336
+        ],
+        "id": "aefc70ea-ce56-4079-922c-7ee866cdfba2",
+        "name": "Update a row7",
+        "credentials": {
+          "supabaseApi": {
+            "id": "o3rLq66uVGgi3KGO",
+            "name": "Supabase account 3"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "url": "https://maps.googleapis.com/maps/api/geocode/json",
+          "sendQuery": true,
+          "queryParameters": {
+            "parameters": [
+              {
+                "name": "address",
+                "value": "={{ $json.originalData['Founder Address'] }}"
+              },
+              {
+                "name": "key",
+                "value": "AIzaSyBhh7hQFAmU5U1azSjVvRgss4W-pOf-yns"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          -64,
+          -400
+        ],
+        "id": "2f1e8e3b-1283-492d-9a16-3c7a9ccedecb",
+        "name": "Get Timezone from Coordinates"
+      },
+      {
+        "parameters": {
+          "url": "https://maps.googleapis.com/maps/api/timezone/json",
+          "sendQuery": true,
+          "queryParameters": {
+            "parameters": [
+              {
+                "name": "location",
+                "value": "={{ $json.results[0].geometry.location.lat }},{{ $json.results[0].geometry.location.lng }}"
+              },
+              {
+                "name": "timestamp",
+                "value": "={{ Math.floor(Date.now() / 1000) }}"
+              },
+              {
+                "name": "key",
+                "value": "AIzaSyBhh7hQFAmU5U1azSjVvRgss4W-pOf-yns"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          144,
+          -368
+        ],
+        "id": "30c8fb2c-39fb-4a94-819c-bf9ece4ade66",
+        "name": "HTTP Request"
+      },
+      {
+        "parameters": {
+          "jsCode": "// Get the current loop item data\nconst recipientData = $('Loop Over Items3').item.json;\nconst founderAddress = recipientData['Founder Address'];\n\n// Get timezone from Google API response - FIXED NODE REFERENCE\nconst timezoneResponse = $('HTTP Request').item.json; // This is the timezone API response\n\n// Extract timezone information\nconst timezone = timezoneResponse.timeZoneId || 'UTC';\nconst timezoneName = timezoneResponse.timeZoneName || 'Unknown';\nconst rawOffset = timezoneResponse.rawOffset || 0;\nconst dstOffset = timezoneResponse.dstOffset || 0;\n\nconsole.log('API Response:', timezoneResponse);\nconsole.log('Extracted timezone:', timezone);\n\n// Function to check if it's working hours (9 AM - 6 PM, Monday-Friday)\nfunction isWorkingHours(timezone) {\n  const now = new Date();\n  \n  // Convert to the recipient's timezone\n  const localTime = new Date(now.toLocaleString(\"en-US\", {timeZone: timezone}));\n  \n  const hour = localTime.getHours();\n  const day = localTime.getDay(); // 0 = Sunday, 6 = Saturday\n  \n  console.log('Current UTC time:', now);\n  console.log('Local time in', timezone, ':', localTime);\n  console.log('Hour:', hour, 'Day:', day);\n  \n  // Check if it's Monday-Friday (1-5) and between 9 AM - 6 PM\n  const isWeekday = day >= 1 && day <= 5;\n  const isWorkingTime = hour >= 9 && hour < 18;\n  \n  return isWeekday && isWorkingTime;\n}\n\n// Check working hours\nconst isWorking = isWorkingHours(timezone);\nconst currentTime = new Date().toLocaleString(\"en-US\", {timeZone: timezone});\nconst currentTimeFormatted = new Date().toLocaleString(\"en-US\", {\n  timeZone: timezone,\n  weekday: 'long',\n  year: 'numeric',\n  month: 'long',\n  day: 'numeric',\n  hour: '2-digit',\n  minute: '2-digit',\n  second: '2-digit'\n});\n\n// Calculate next working day if outside hours\nlet nextWorkingDay = null;\nif (!isWorking) {\n  const now = new Date();\n  const localTime = new Date(now.toLocaleString(\"en-US\", {timeZone: timezone}));\n  const day = localTime.getDay();\n  const hour = localTime.getHours();\n  \n  if (day === 0) { // Sunday\n    nextWorkingDay = 'Monday 9:00 AM';\n  } else if (day === 6) { // Saturday\n    nextWorkingDay = 'Monday 9:00 AM';\n  } else if (hour < 9) { // Before 9 AM\n    nextWorkingDay = 'Today 9:00 AM';\n  } else if (hour >= 18) { // After 6 PM\n    nextWorkingDay = 'Tomorrow 9:00 AM';\n  }\n}\n\nconsole.log('Recipient Address:', founderAddress);\nconsole.log('Detected Timezone:', timezone);\nconsole.log('Timezone Name:', timezoneName);\nconsole.log('Current Time in Recipient Timezone:', currentTimeFormatted);\nconsole.log('Is Working Hours:', isWorking);\nconsole.log('Next Working Day:', nextWorkingDay);\n\n// Return the result\nreturn [{\n  json: {\n    ...recipientData, // Pass through all original data\n    timezone: timezone,\n    timezoneName: timezoneName,\n    currentTime: currentTime,\n    currentTimeFormatted: currentTimeFormatted,\n    isWorkingHours: isWorking,\n    shouldSendEmail: isWorking,\n    nextWorkingDay: nextWorkingDay,\n    rawOffset: rawOffset,\n    dstOffset: dstOffset\n  }\n}];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          352,
+          -336
+        ],
+        "id": "fe3c84e6-02bc-4d7b-9b3a-7e313289c6ee",
+        "name": "Timwzone check"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 2
+            },
+            "conditions": [
+              {
+                "id": "e2f130e8-a615-4235-9d65-e1e6c30ddda0",
+                "leftValue": "={{ $json.isWorkingHours }}",
+                "rightValue": "",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          560,
+          -336
+        ],
+        "id": "5f7168ec-b17a-4966-8490-078012d41035",
+        "name": "If6"
+      },
+      {
+        "parameters": {},
+        "type": "n8n-nodes-base.wait",
+        "typeVersion": 1.1,
+        "position": [
+          -1200,
+          -352
+        ],
+        "id": "c7f5237c-a178-4e0e-b0c0-5e5511d3aa70",
+        "name": "Wait",
+        "webhookId": "57eb9244-93d9-4919-a0d2-c2b547b7d835"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 2
+            },
+            "conditions": [
+              {
+                "id": "cb94079d-4d18-4bc2-ba0b-42a12ed95c6b",
+                "leftValue": "={{ $json['Company Website'] }}",
+                "rightValue": "null",
+                "operator": {
+                  "type": "string",
+                  "operation": "equals"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          -1568,
+          0
+        ],
+        "id": "e07e5794-c0f9-461c-bbbd-d81520fb3968",
+        "name": "If9"
+      },
+      {
+        "parameters": {
+          "rules": {
+            "values": [
+              {
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "loose",
+                    "version": 2
+                  },
+                  "conditions": [
+                    {
+                      "leftValue": "={{ $json['Company\\'s Industry'] }}",
+                      "rightValue": "=Agrochemical",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals"
+                      },
+                      "id": "4f96c55c-5e8f-4d7f-8f15-1cf21c2b6a95"
+                    }
+                  ],
+                  "combinator": "and"
+                }
+              },
+              {
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "loose",
+                    "version": 2
+                  },
+                  "conditions": [
+                    {
+                      "id": "8cf7af90-8d4c-406f-8227-d22da6b4997b",
+                      "leftValue": "={{ $json['Company\\'s Industry'] }}",
+                      "rightValue": "Oil & Gas",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals",
+                        "name": "filter.operator.equals"
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                }
+              },
+              {
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "loose",
+                    "version": 2
+                  },
+                  "conditions": [
+                    {
+                      "id": "a8849f6d-8c88-42d2-8d11-d61288bcf2e7",
+                      "leftValue": "={{ $json['Company\\'s Industry'] }}",
+                      "rightValue": "Lubricant",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals",
+                        "name": "filter.operator.equals"
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                }
+              }
+            ]
+          },
+          "looseTypeValidation": true,
+          "options": {}
+        },
+        "type": "n8n-nodes-base.switch",
+        "typeVersion": 3.2,
+        "position": [
+          -1184,
+          -32
+        ],
+        "id": "649bdd8f-4696-4c60-9239-a5834175be8c",
+        "name": "Switch"
+      },
+      {
+        "parameters": {
+          "operation": "update",
+          "tableId": "scraped Data",
+          "filters": {
+            "conditions": [
+              {
+                "keyName": "id",
+                "condition": "eq",
+                "keyValue": "={{ $('Get many rows3').item.json.id }}"
+              }
+            ]
+          },
+          "fieldsUi": {
+            "fieldValues": [
+              {
+                "fieldId": "Email Subject",
+                "fieldValue": "={{ $json.email_subject }}"
+              },
+              {
+                "fieldId": "Email content",
+                "fieldValue": "={{ $json.email_body }}"
+              }
+            ]
+          }
+        },
+        "type": "n8n-nodes-base.supabase",
+        "typeVersion": 1,
+        "position": [
+          -432,
+          48
+        ],
+        "id": "13f3c68a-99fe-4b6d-b15f-c342ade7dec2",
+        "name": "Update a row8",
+        "credentials": {
+          "supabaseApi": {
+            "id": "o3rLq66uVGgi3KGO",
+            "name": "Supabase account 3"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "operation": "update",
+          "tableId": "scraped Data",
+          "filters": {
+            "conditions": [
+              {
+                "keyName": "id",
+                "condition": "eq",
+                "keyValue": "={{ $('Get many rows3').item.json.id }}"
+              }
+            ]
+          },
+          "fieldsUi": {
+            "fieldValues": [
+              {
+                "fieldId": "Email Subject",
+                "fieldValue": "={{ $json.email_subject }}"
+              },
+              {
+                "fieldId": "Email content",
+                "fieldValue": "={{ $json.email_body }}"
+              }
+            ]
+          }
+        },
+        "type": "n8n-nodes-base.supabase",
+        "typeVersion": 1,
+        "position": [
+          -432,
+          -112
+        ],
+        "id": "df77b9ce-ba6a-4fcb-92de-f49527cceece",
+        "name": "Update a row9",
+        "credentials": {
+          "supabaseApi": {
+            "id": "o3rLq66uVGgi3KGO",
+            "name": "Supabase account 3"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "operation": "update",
+          "tableId": "scraped Data",
+          "filters": {
+            "conditions": [
+              {
+                "keyName": "id",
+                "condition": "eq",
+                "keyValue": "={{ $('Get many rows3').item.json.id }}"
+              }
+            ]
+          },
+          "fieldsUi": {
+            "fieldValues": [
+              {
+                "fieldId": "Email Subject",
+                "fieldValue": "={{ $json.email_subject }}"
+              },
+              {
+                "fieldId": "Email content",
+                "fieldValue": "={{ $json.email_body }}"
+              }
+            ]
+          }
+        },
+        "type": "n8n-nodes-base.supabase",
+        "typeVersion": 1,
+        "position": [
+          -432,
+          208
+        ],
+        "id": "db4fea64-cd0a-4cb1-853e-80506fd27c49",
+        "name": "Update a row10",
+        "credentials": {
+          "supabaseApi": {
+            "id": "o3rLq66uVGgi3KGO",
+            "name": "Supabase account 3"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "// n8n Function Node: Agro Template with provided HTML\n\nconst emailTemplate = {\n  subject: \"Introduction and proposal to supply Specialty Chemicals for Agro Crop Protection & Nutrition\",\n  body: `\n<!DOCTYPE html>\n<html>\n  <body style=\"font-family: Arial, sans-serif; font-size: 14px; color: #333; line-height: 1.6; margin: 0; padding: 0;\">\n    <p>Hi {{LeadName}},</p>\n\n    <p>Greetings from <b>Corofy</b>!</p>\n\n    <p>\n      We are a passionate team of professionals specializing in Specialty Chemicals for Agro Crop Protection and Nutrition, proudly certified with ISO 9001:2015 by UKAS Management Systems. With facilities in the UAE and India, and ready stocks in both regions, we are strategically positioned to serve global markets. We also arrange direct shipments from UAE, India, and China ensuring flexibility and reliability.\n    </p>\n\n    <p>Key Agro Chemicals we offer include:</p>\n\n    <ul style=\"margin:0; padding-left:18px;\">\n      <li>CABS – Calcium Alkyl Benzene Sulfonate</li>\n      <li>Castor Oil Ethoxylates</li>\n      <li>Nonylphenol Ethoxylates</li>\n      <li>Styrenated Phenol Ethoxylate</li>\n      <li>Alcohol Ethoxylates</li>\n      <li>Tallow Amine Ethoxylates</li>\n      <li>Polyethylene Glycol (PEG)</li>\n      <li>Adjuvants, Surfactants, Emulsifiers</li>\n      <li>Defoamers, Dispersing & Wetting Agents</li>\n      <li>Micro Nutrients, Technicals and Formulations</li>\n    </ul>\n\n    <p>\n      We would be pleased to explore potential collaboration and supply opportunities with your esteemed organization. Kindly let us know the next steps to move forward.\n    </p>\n\n    <p>Looking forward to your response.</p>\n\n    <p style=\"margin-top:20px;\">\n      Best Regards,<br><br>\n      <strong>Mehul Parmar</strong><br>\n      Director – Commercial & Technical<br>\n      Cell Phone: <a href=\"tel:+971554306280\" style=\"color:#0066cc; text-decoration:none;\">+971 554306280</a>\n    </p>\n\n    <hr style=\"border:0; border-top:1px solid #ccc; margin:20px 0;\">\n\n    <table style=\"font-size:13px; color:#333; font-family:Arial, sans-serif;\">\n      <tr>\n        <td style=\"padding-right:10px; vertical-align:top;\">\n          <img src=\"https://media.licdn.com/dms/image/v2/D4D0BAQG4B_2SfqHmHQ/company-logo_200_200/company-logo_200_200/0/1706868984894/corofy_llc_logo?e=1759363200&v=beta&t=IRuzQ2YcCU9pPdvTAn2h0L3aXKAFB_ZtJ2EFBMandGU\" \n             alt=\"Corofy Logo\" \n             style=\"height:50px; width:auto;\" />\n        </td>\n        <td style=\"vertical-align:top;\">\n          <strong>Corofy LLC</strong><br>\n          510 – Goldcrest Executive, Cluster C, JLT – Dubai – United Arab Emirates<br>\n          Tel: <a href=\"tel:+97142715611\" style=\"color:#0066cc; text-decoration:none;\">+971 4 271 5611</a> | \n          <a href=\"http://www.corofychem.com\" style=\"color:#0066cc; text-decoration:none;\">www.corofychem.com</a><br>\n          Email: <a href=\"mailto:mehul@corofychem.com\" style=\"color:#0066cc; text-decoration:none;\">mehul@corofychem.com</a><br>\n          <span style=\"color:#777;\">ISO 9001:2015 Certified from UKAS Management Systems</span>\n        </td>\n      </tr>\n    </table>\n  </body>\n</html>`\n};\n\nconst results = [];\n\nfor (const item of $input.all()) {\n  const leadName = item.json[\"Lead Name\"] || \"there\";\n  const subject = emailTemplate.subject;\n  const body = emailTemplate.body.replace(/{{LeadName}}/g, leadName);\n\n  results.push({\n    json: {\n      ...item.json,\n      email_subject: subject,\n      email_body: body\n    }\n  });\n}\n\nreturn results;\n"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -736,
+          -112
+        ],
+        "id": "016ae9f9-bb20-40c5-89a9-85f49b55ee1e",
+        "name": "Code Agrochemical"
+      },
+      {
+        "parameters": {
+          "jsCode": "// n8n Function Node: Oil & Gas Template with provided HTML\n\nconst emailTemplate = {\n  subject: \"Proposal to supply Specialty Chemicals for Oil & Gas Industry\",\n  body: `\n<!DOCTYPE html>\n<html>\n  <body style=\"font-family: Arial, sans-serif; font-size: 14px; color: #333; line-height: 1.6; margin: 0; padding: 0;\">\n    <p>Hi {{LeadName}},</p>\n\n    <p>Greetings from <b>Corofy</b>!</p>\n\n    <p>\n      We are a professional team dedicated to providing Specialty Chemicals for the Oil & Gas industry, certified with ISO 9001:2015 by UKAS Management Systems. With facilities in the UAE and India, and strategic stock points in both locations, we ensure reliable global supply. We also arrange direct shipments from UAE, India, and China for maximum flexibility.\n    </p>\n\n    <p>Key Oil & Gas Chemicals we offer include:</p>\n\n    <ul style=\"margin:0; padding-left:18px;\">\n      <li>Corrosion Inhibitors</li>\n      <li>Scale Inhibitors</li>\n      <li>Demulsifiers</li>\n      <li>Pour Point Depressants</li>\n      <li>Drilling Mud Chemicals</li>\n      <li>Emulsion Breakers</li>\n      <li>Biocides</li>\n      <li>Defoamers</li>\n      <li>Flow Improvers</li>\n      <li>Production & Refinery Chemicals</li>\n    </ul>\n\n    <p>\n      We would be delighted to discuss how our solutions can support your operations. Kindly advise the next steps to explore collaboration.\n    </p>\n\n    <p>Looking forward to your response.</p>\n\n    <p style=\"margin-top:20px;\">\n      Best Regards,<br><br>\n      <strong>Mehul Parmar</strong><br>\n      Director – Commercial & Technical<br>\n      Cell Phone: <a href=\"tel:+971554306280\" style=\"color:#0066cc; text-decoration:none;\">+971 554306280</a>\n    </p>\n\n    <hr style=\"border:0; border-top:1px solid #ccc; margin:20px 0;\">\n\n    <table style=\"font-size:13px; color:#333; font-family:Arial, sans-serif;\">\n      <tr>\n        <td style=\"padding-right:10px; vertical-align:top;\">\n          <img src=\"https://media.licdn.com/dms/image/v2/D4D0BAQG4B_2SfqHmHQ/company-logo_200_200/company-logo_200_200/0/1706868984894/corofy_llc_logo?e=1759363200&v=beta&t=IRuzQ2YcCU9pPdvTAn2h0L3aXKAFB_ZtJ2EFBMandGU\" \n             alt=\"Corofy Logo\" \n             style=\"height:50px; width:auto;\" />\n        </td>\n        <td style=\"vertical-align:top;\">\n          <strong>Corofy LLC</strong><br>\n          510 – Goldcrest Executive, Cluster C, JLT – Dubai – United Arab Emirates<br>\n          Tel: <a href=\"tel:+97142715611\" style=\"color:#0066cc; text-decoration:none;\">+971 4 271 5611</a> | \n          <a href=\"http://www.corofychem.com\" style=\"color:#0066cc; text-decoration:none;\">www.corofychem.com</a><br>\n          Email: <a href=\"mailto:mehul@corofychem.com\" style=\"color:#0066cc; text-decoration:none;\">mehul@corofychem.com</a><br>\n          <span style=\"color:#777;\">ISO 9001:2015 Certified from UKAS Management Systems</span>\n        </td>\n      </tr>\n    </table>\n  </body>\n</html>`\n};\n\nconst results = [];\n\nfor (const item of $input.all()) {\n  const leadName = item.json[\"Lead Name\"] || \"there\";\n  const subject = emailTemplate.subject;\n  const body = emailTemplate.body.replace(/{{LeadName}}/g, leadName);\n  \n  results.push({\n    json: {\n      ...item.json,\n      email_subject: subject,\n      email_body: body\n    }\n  });\n}\n\nreturn results;\n"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -752,
+          48
+        ],
+        "id": "7d127253-c602-4ec9-abeb-cd2fd7a54318",
+        "name": "Code Oil & Gas"
+      },
+      {
+        "parameters": {
+          "jsCode": "// n8n Function Node: Lubricants & Greases Template with provided HTML\n\nconst emailTemplate = {\n  subject: \"Proposal to supply Specialty Chemicals for Lubricants & Greases\",\n  body: `\n<!DOCTYPE html>\n<html>\n  <body style=\"font-family: Arial, sans-serif; font-size: 14px; color: #333; line-height: 1.6; margin: 0; padding: 0;\">\n    <p>Hi {{LeadName}},</p>\n\n    <p>Greetings from <b>Corofy</b>!</p>\n\n    <p>\n      We are a committed team of professionals supplying Specialty Chemicals for the Lubricants and Grease industry, with ISO 9001:2015 certification from UKAS Management Systems. With warehouses in the UAE and India, and ready stock in both regions, we ensure seamless supply to global clients. Direct shipments from UAE, India, and China are also arranged on request.\n    </p>\n\n    <p>Key Lubricant Chemicals we offer include:</p>\n\n    <ul style=\"margin:0; padding-left:18px;\">\n      <li>Succinic Anhydride & Succinimides</li>\n      <li>Viscosity Index Improvers</li>\n      <li>Pour Point Depressants</li>\n      <li>Anti-wear Additives</li>\n      <li>Detergent Additives</li>\n      <li>Dispersant Additives</li>\n      <li>Antioxidants</li>\n      <li>Corrosion Inhibitors</li>\n      <li>Metal Deactivators</li>\n      <li>Base Oils & Grease Additives</li>\n    </ul>\n\n    <p>\n      We would be glad to explore opportunities to work with your esteemed organization. Kindly let us know how we may proceed.\n    </p>\n\n    <p>Looking forward to your response.</p>\n\n    <p style=\"margin-top:20px;\">\n      Best Regards,<br><br>\n      <strong>Mehul Parmar</strong><br>\n      Director – Commercial & Technical<br>\n      Cell Phone: <a href=\"tel:+971554306280\" style=\"color:#0066cc; text-decoration:none;\">+971 554306280</a>\n    </p>\n\n    <hr style=\"border:0; border-top:1px solid #ccc; margin:20px 0;\">\n\n    <table style=\"font-size:13px; color:#333; font-family:Arial, sans-serif;\">\n      <tr>\n        <td style=\"padding-right:10px; vertical-align:top;\">\n          <img src=\"https://media.licdn.com/dms/image/v2/D4D0BAQG4B_2SfqHmHQ/company-logo_200_200/company-logo_200_200/0/1706868984894/corofy_llc_logo?e=1759363200&v=beta&t=IRuzQ2YcCU9pPdvTAn2h0L3aXKAFB_ZtJ2EFBMandGU\" \n             alt=\"Corofy Logo\" \n             style=\"height:50px; width:auto;\" />\n        </td>\n        <td style=\"vertical-align:top;\">\n          <strong>Corofy LLC</strong><br>\n          510 – Goldcrest Executive, Cluster C, JLT – Dubai – United Arab Emirates<br>\n          Tel: <a href=\"tel:+97142715611\" style=\"color:#0066cc; text-decoration:none;\">+971 4 271 5611</a> | \n          <a href=\"http://www.corofychem.com\" style=\"color:#0066cc; text-decoration:none;\">www.corofychem.com</a><br>\n          Email: <a href=\"mailto:mehul@corofychem.com\" style=\"color:#0066cc; text-decoration:none;\">mehul@corofychem.com</a><br>\n          <span style=\"color:#777;\">ISO 9001:2015 Certified from UKAS Management Systems</span>\n        </td>\n      </tr>\n    </table>\n  </body>\n</html>`\n};\n\nconst results = [];\n\nfor (const item of $input.all()) {\n  const leadName = item.json[\"Lead Name\"] || \"there\";\n  const subject = emailTemplate.subject;\n  const body = emailTemplate.body.replace(/{{LeadName}}/g, leadName);\n\n  results.push({\n    json: {\n      ...item.json,\n      email_subject: subject,\n      email_body: body\n    }\n  });\n}\n\nreturn results;\n"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -752,
+          208
+        ],
+        "id": "864dc82c-d976-4c6a-843a-9f3bc6f3fb70",
+        "name": "Code Lubricant"
+      },
+      {
+        "parameters": {
+          "url": "https://maps.googleapis.com/maps/api/geocode/json",
+          "sendQuery": true,
+          "queryParameters": {
+            "parameters": [
+              {
+                "name": "address",
+                "value": "={{ $('Get many rows3').item.json['Founder Address'] }}"
+              },
+              {
+                "name": "key",
+                "value": "AIzaSyBhh7hQFAmU5U1azSjVvRgss4W-pOf-yns"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          304,
+          48
+        ],
+        "id": "6acdead9-e1f7-479f-9abc-f7a9d1048682",
+        "name": "Get Timezone from Coordinates3"
+      },
+      {
+        "parameters": {
+          "url": "https://maps.googleapis.com/maps/api/timezone/json",
+          "sendQuery": true,
+          "queryParameters": {
+            "parameters": [
+              {
+                "name": "location",
+                "value": "={{ $json.results[0].geometry.location.lat }},{{ $json.results[0].geometry.location.lng }}"
+              },
+              {
+                "name": "timestamp",
+                "value": "={{ Math.floor(Date.now() / 1000) }}"
+              },
+              {
+                "name": "key",
+                "value": "AIzaSyBhh7hQFAmU5U1azSjVvRgss4W-pOf-yns"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          464,
+          48
+        ],
+        "id": "7293c58e-92b5-473d-96d4-892341c41d0a",
+        "name": "HTTP Request3"
+      },
+      {
+        "parameters": {
+          "jsCode": "// Get the current loop item data\nconst recipientData = $('Loop Over Items3').item.json;\nconst founderAddress = recipientData['Founder Address'];\n\n// Get timezone from Google API response - FIXED NODE REFERENCE\nconst timezoneResponse = $('HTTP Request3').item.json; // This is the timezone API response\n\n// Extract timezone information\nconst timezone = timezoneResponse.timeZoneId || 'UTC';\nconst timezoneName = timezoneResponse.timeZoneName || 'Unknown';\nconst rawOffset = timezoneResponse.rawOffset || 0;\nconst dstOffset = timezoneResponse.dstOffset || 0;\n\nconsole.log('API Response:', timezoneResponse);\nconsole.log('Extracted timezone:', timezone);\n\n// Function to check if it's working hours (9 AM - 6 PM, Monday-Friday)\nfunction isWorkingHours(timezone) {\n  const now = new Date();\n  \n  // Convert to the recipient's timezone\n  const localTime = new Date(now.toLocaleString(\"en-US\", {timeZone: timezone}));\n  \n  const hour = localTime.getHours();\n  const day = localTime.getDay(); // 0 = Sunday, 6 = Saturday\n  \n  console.log('Current UTC time:', now);\n  console.log('Local time in', timezone, ':', localTime);\n  console.log('Hour:', hour, 'Day:', day);\n  \n  // Check if it's Monday-Friday (1-5) and between 9 AM - 6 PM\n  const isWeekday = day >= 1 && day <= 5;\n  const isWorkingTime = hour >= 9 && hour < 18;\n  \n  return isWeekday && isWorkingTime;\n}\n\n// Check working hours\nconst isWorking = isWorkingHours(timezone);\nconst currentTime = new Date().toLocaleString(\"en-US\", {timeZone: timezone});\nconst currentTimeFormatted = new Date().toLocaleString(\"en-US\", {\n  timeZone: timezone,\n  weekday: 'long',\n  year: 'numeric',\n  month: 'long',\n  day: 'numeric',\n  hour: '2-digit',\n  minute: '2-digit',\n  second: '2-digit'\n});\n\n// Calculate next working day if outside hours\nlet nextWorkingDay = null;\nif (!isWorking) {\n  const now = new Date();\n  const localTime = new Date(now.toLocaleString(\"en-US\", {timeZone: timezone}));\n  const day = localTime.getDay();\n  const hour = localTime.getHours();\n  \n  if (day === 0) { // Sunday\n    nextWorkingDay = 'Monday 9:00 AM';\n  } else if (day === 6) { // Saturday\n    nextWorkingDay = 'Monday 9:00 AM';\n  } else if (hour < 9) { // Before 9 AM\n    nextWorkingDay = 'Today 9:00 AM';\n  } else if (hour >= 18) { // After 6 PM\n    nextWorkingDay = 'Tomorrow 9:00 AM';\n  }\n}\n\nconsole.log('Recipient Address:', founderAddress);\nconsole.log('Detected Timezone:', timezone);\nconsole.log('Timezone Name:', timezoneName);\nconsole.log('Current Time in Recipient Timezone:', currentTimeFormatted);\nconsole.log('Is Working Hours:', isWorking);\nconsole.log('Next Working Day:', nextWorkingDay);\n\n// Return the result\nreturn [{\n  json: {\n    ...recipientData, // Pass through all original data\n    timezone: timezone,\n    timezoneName: timezoneName,\n    currentTime: currentTime,\n    currentTimeFormatted: currentTimeFormatted,\n    isWorkingHours: isWorking,\n    shouldSendEmail: isWorking,\n    nextWorkingDay: nextWorkingDay,\n    rawOffset: rawOffset,\n    dstOffset: dstOffset\n  }\n}];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          640,
+          48
+        ],
+        "id": "eadc6bc0-f3a3-4ef5-8390-3d2cbdccf5fc",
+        "name": "Timwzone check2"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 2
+            },
+            "conditions": [
+              {
+                "id": "e2f130e8-a615-4235-9d65-e1e6c30ddda0",
+                "leftValue": "={{ $json.isWorkingHours }}",
+                "rightValue": "",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          816,
+          64
+        ],
+        "id": "d4fc1e0e-a0b6-4712-90b8-6a5263ec94f8",
+        "name": "If10"
+      },
+      {
+        "parameters": {
+          "numberInputs": 3
+        },
+        "type": "n8n-nodes-base.merge",
+        "typeVersion": 3.2,
+        "position": [
+          0,
+          48
+        ],
+        "id": "aca9de57-83bb-4357-8b47-4f42ec552e31",
+        "name": "Merge"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 2
+            },
+            "conditions": [
+              {
+                "id": "eb2b7c7c-0e9f-454c-aea6-6a992a54047f",
+                "leftValue": "={{ $json['Founder Email'] }}",
+                "rightValue": "",
+                "operator": {
+                  "type": "string",
+                  "operation": "notEmpty",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          -2528,
+          32
+        ],
+        "id": "2d49e767-c351-4b83-a889-b7f238faeb36",
+        "name": "If"
+      },
+      {
+        "parameters": {
+          "toRecipients": "={{ $json['Founder Email'] }}",
+          "subject": "={{ $json['Email Subject'] }}",
+          "bodyContent": "={{ $json['Email content'] }}",
+          "additionalFields": {
+            "bodyContentType": "html"
+          }
+        },
+        "type": "n8n-nodes-base.microsoftOutlook",
+        "typeVersion": 2,
+        "position": [
+          1152,
+          -336
+        ],
+        "id": "e98ca457-1f35-4ddd-bbfb-e4c16e3d6fba",
+        "name": "Send a message",
+        "webhookId": "88365abb-b283-4019-b8be-8e993ef36e13",
+        "credentials": {
+          "microsoftOutlookOAuth2Api": {
+            "id": "nlDpHVHOfUv0vOhc",
+            "name": "Microsoft Outlook Pallavi COROFY"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "toRecipients": "={{ $json['Founder Email'] }}",
+          "subject": "={{ $json['Email Subject'] }}",
+          "bodyContent": "={{ $json['Email content'] }}",
+          "additionalFields": {
+            "bodyContentType": "html"
+          }
+        },
+        "type": "n8n-nodes-base.microsoftOutlook",
+        "typeVersion": 2,
+        "position": [
+          1168,
+          64
+        ],
+        "id": "4180b893-7839-4d77-a828-d67c4b7b9acb",
+        "name": "Send a message5",
+        "webhookId": "88365abb-b283-4019-b8be-8e993ef36e13",
+        "credentials": {
+          "microsoftOutlookOAuth2Api": {
+            "id": "nlDpHVHOfUv0vOhc",
+            "name": "Microsoft Outlook Pallavi COROFY"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "operation": "getAll",
+          "limit": 1,
+          "filtersUI": {
+            "values": {
+              "filterBy": "search",
+              "search": "={{ $('If4').item.json['Email Subject'] }}"
+            }
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.microsoftOutlook",
+        "typeVersion": 2,
+        "position": [
+          1360,
+          -336
+        ],
+        "id": "901e90bb-499e-4a0a-93ce-d30c052c26e9",
+        "name": "Get many messages",
+        "webhookId": "2a14ce93-702b-4a77-b49e-4f04286f7aaf",
+        "credentials": {
+          "microsoftOutlookOAuth2Api": {
+            "id": "nlDpHVHOfUv0vOhc",
+            "name": "Microsoft Outlook Pallavi COROFY"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "operation": "getAll",
+          "limit": 1,
+          "filtersUI": {
+            "values": {
+              "filterBy": "search",
+              "search": "={{ $('If10').item.json['Email Subject'] }}"
+            }
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.microsoftOutlook",
+        "typeVersion": 2,
+        "position": [
+          1376,
+          64
+        ],
+        "id": "c5b173f2-eb9d-4d6f-bc7a-7a26f7ec4021",
+        "name": "Get many messages1",
+        "webhookId": "92c7792c-5fbc-4821-b969-dc7eb5815659",
+        "credentials": {
+          "microsoftOutlookOAuth2Api": {
+            "id": "nlDpHVHOfUv0vOhc",
+            "name": "Microsoft Outlook Pallavi COROFY"
+          }
+        }
+      }
+    ],
+    "connections": {
+      "When clicking ‘Execute workflow’": {
+        "main": [
+          [
+            {
+              "node": "Get many rows3",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Code2": {
+        "main": [
+          [
+            {
+              "node": "Get Timezone from Coordinates",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Get many rows3": {
+        "main": [
+          [
+            {
+              "node": "If",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Update a row6": {
+        "main": [
+          [
+            {
+              "node": "Loop Over Items3",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Loop Over Items3": {
+        "main": [
+          [],
+          [
+            {
+              "node": "If9",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Scrape a url and get its content1": {
+        "main": [
+          [
+            {
+              "node": "Code3",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Code3": {
+        "main": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "AI Agent": {
+        "main": [
+          [
+            {
+              "node": "Code2",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "OpenAI Chat Model": {
+        "ai_languageModel": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "ai_languageModel",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "If4": {
+        "main": [
+          [
+            {
+              "node": "If5",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "If5": {
+        "main": [
+          [
+            {
+              "node": "Loop Over Items3",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Update a row7": {
+        "main": [
+          [
+            {
+              "node": "Send a message",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Get Timezone from Coordinates": {
+        "main": [
+          [
+            {
+              "node": "HTTP Request",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "HTTP Request": {
+        "main": [
+          [
+            {
+              "node": "Timwzone check",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Timwzone check": {
+        "main": [
+          [
+            {
+              "node": "If6",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "If6": {
+        "main": [
+          [
+            {
+              "node": "Update a row7",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Loop Over Items3",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Wait": {
+        "main": [
+          [
+            {
+              "node": "Scrape a url and get its content1",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "If9": {
+        "main": [
+          [
+            {
+              "node": "Wait",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Switch",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Switch": {
+        "main": [
+          [
+            {
+              "node": "Code Agrochemical",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Code Oil & Gas",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Code Lubricant",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Update a row8": {
+        "main": [
+          [
+            {
+              "node": "Merge",
+              "type": "main",
+              "index": 1
+            }
+          ]
+        ]
+      },
+      "Update a row9": {
+        "main": [
+          [
+            {
+              "node": "Merge",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Update a row10": {
+        "main": [
+          [
+            {
+              "node": "Merge",
+              "type": "main",
+              "index": 2
+            }
+          ]
+        ]
+      },
+      "Code Agrochemical": {
+        "main": [
+          [
+            {
+              "node": "Update a row9",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Code Oil & Gas": {
+        "main": [
+          [
+            {
+              "node": "Update a row8",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Code Lubricant": {
+        "main": [
+          [
+            {
+              "node": "Update a row10",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Get Timezone from Coordinates3": {
+        "main": [
+          [
+            {
+              "node": "HTTP Request3",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "HTTP Request3": {
+        "main": [
+          [
+            {
+              "node": "Timwzone check2",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Timwzone check2": {
+        "main": [
+          [
+            {
+              "node": "If10",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "If10": {
+        "main": [
+          [
+            {
+              "node": "Send a message5",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Loop Over Items3",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Merge": {
+        "main": [
+          [
+            {
+              "node": "Get Timezone from Coordinates3",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "If": {
+        "main": [
+          [
+            {
+              "node": "If4",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Send a message": {
+        "main": [
+          [
+            {
+              "node": "Get many messages",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Send a message5": {
+        "main": [
+          [
+            {
+              "node": "Get many messages1",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Get many messages": {
+        "main": [
+          [
+            {
+              "node": "Update a row6",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Get many messages1": {
+        "main": [
+          [
+            {
+              "node": "Update a row6",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "pinData": {
+      "When clicking ‘Execute workflow’": [
+        {}
+      ]
+    },
+    "meta": {
+      "templateCredsSetupCompleted": true,
+      "instanceId": "10e4e6c1eea9300223cd6b73408d4f00c50de7b03f854dae5b15fcc57988166b"
+    }
+  }
