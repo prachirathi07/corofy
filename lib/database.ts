@@ -124,7 +124,7 @@ export class ProductDatabase {
       throw error
     }
 
-    return Array.from(new Set(data?.map((item: Product) => item.industry) || []))
+    return Array.from(new Set(data?.map((item: { industry: string }) => item.industry) || []))
   }
 
   // Get brands by industry
@@ -140,7 +140,7 @@ export class ProductDatabase {
       throw error
     }
 
-    return Array.from(new Set(data?.map((item: Product) => item.brandName) || []))
+    return Array.from(new Set(data?.map((item: { brandName: string }) => item.brandName) || []))
   }
 
   // Get chemicals by brand
@@ -157,7 +157,7 @@ export class ProductDatabase {
       throw error
     }
 
-    return Array.from(new Set(data?.map((item: Product) => item.chemicalName) || []))
+    return Array.from(new Set(data?.map((item: { chemicalName: string }) => item.chemicalName) || []))
   }
 
   // Get countries by selection
