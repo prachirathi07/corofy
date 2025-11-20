@@ -49,20 +49,7 @@ class EmailPersonalizationService:
             
             lead = lead_result.data[0]
             
-            # Check if email already generated (unless force_regenerate)
-            if not force_regenerate:
-                existing_email = self.db.table("emails_sent").select("*").eq("lead_id", lead_id).eq("email_type", email_type).execute()
-                if existing_email.data and len(existing_email.data) > 0:
-                    logger.info(f"Using existing email for lead {lead_id}")
-                    return {
-                        "success": True,
-                        "subject": existing_email.data[0].get("email_subject"),
-                        "body": existing_email.data[0].get("email_body"),
-                        "from_cache": True,
-                        "is_personalized": existing_email.data[0].get("is_personalized", False)
-                    }
-            
-            # Get website content if available
+            # Get website content FIRST - we need to check if it's available before deciding to use existing email
             company_domain = lead.get("company_domain")
             company_website_content = None
             website_scraped = False
@@ -104,12 +91,56 @@ class EmailPersonalizationService:
             else:
                 logger.warning(f"⚠️ PERSONALIZATION: No company domain for lead {lead_id}, cannot personalize")
             
+            # Check if email already generated (unless force_regenerate OR we have website content that wasn't used)
+            should_regenerate = force_regenerate
+            if not force_regenerate:
+                existing_email = self.db.table("emails_sent").select("*").eq("lead_id", lead_id).eq("email_type", email_type).execute()
+                if existing_email.data and len(existing_email.data) > 0:
+                    existing_record = existing_email.data[0]
+                    existing_website_used = existing_record.get("company_website_used", False)
+                    existing_personalized = existing_record.get("is_personalized", False)
+                    
+                    # If we have website content but the existing email wasn't personalized with it, regenerate
+                    if company_website_content and len(company_website_content.strip()) > 0:
+                        if not existing_website_used or not existing_personalized:
+                            logger.info(f"🔄 PERSONALIZATION: Website content available but existing email not personalized. Regenerating...")
+                            should_regenerate = True
+                        else:
+                            logger.info(f"✅ PERSONALIZATION: Using existing personalized email for lead {lead_id}")
+                            return {
+                                "success": True,
+                                "subject": existing_record.get("email_subject"),
+                                "body": existing_record.get("email_body"),
+                                "from_cache": True,
+                                "is_personalized": existing_personalized,
+                                "company_website_used": existing_website_used
+                            }
+                    else:
+                        # No website content available, use existing email if it exists
+                        logger.info(f"📧 PERSONALIZATION: Using existing email for lead {lead_id} (no website content available)")
+                        return {
+                            "success": True,
+                            "subject": existing_record.get("email_subject"),
+                            "body": existing_record.get("email_body"),
+                            "from_cache": True,
+                            "is_personalized": existing_personalized,
+                            "company_website_used": existing_website_used
+                        }
+            
             # Generate email using OpenAI
-            logger.info(f"🤖 PERSONALIZATION: Generating email with OpenAI (has_website_content: {bool(company_website_content)})")
+            company_name = lead.get("company_name") or "their company"
+            lead_name = f"{lead.get('first_name', '')} {lead.get('last_name', '')}".strip() or lead.get('email', '').split('@')[0]
+            
+            logger.info(f"🤖 PERSONALIZATION: Generating email with OpenAI")
+            logger.info(f"   - Lead: {lead_name}")
+            logger.info(f"   - Company: {company_name}")
+            logger.info(f"   - Has website content: {bool(company_website_content)}")
+            logger.info(f"   - Website content length: {len(company_website_content) if company_website_content else 0} chars")
+            
             email_result = await self.openai_service.generate_personalized_email(
-                lead_name=f"{lead.get('first_name', '')} {lead.get('last_name', '')}".strip() or lead.get('email', '').split('@')[0],
+                lead_name=lead_name,
                 lead_title=lead.get("title", ""),
-                company_name=lead.get("company_name", ""),
+                company_name=company_name,
                 company_website_content=company_website_content,
                 company_industry=lead.get("company_industry"),
                 email_type=email_type

@@ -112,6 +112,9 @@ class OpenAIService:
     ) -> str:
         """Build prompt for initial email"""
         
+        # Ensure company_name is not None
+        company_name = company_name or "their company"
+        
         prompt = f"""Write a personalized B2B outreach email with the following details:
 
 Recipient: {lead_name}
@@ -122,15 +125,28 @@ Company: {company_name}"""
             prompt += f"\nIndustry: {company_industry}"
         
         if company_website_content and len(company_website_content.strip()) > 0:
-            # Use first 3000 characters to get more context (increased from 2000)
-            content_preview = company_website_content[:3000]
-            logger.info(f"📝 OPENAI: Using website content for personalization ({len(content_preview)} chars)")
+            # Use first 5000 characters to get more context (increased from 3000)
+            content_preview = company_website_content[:5000]
+            logger.info(f"📝 OPENAI: Using website content for personalization ({len(content_preview)} chars out of {len(company_website_content)} total)")
+            logger.info(f"📝 OPENAI: Content preview (first 300 chars): {content_preview[:300]}...")
+            logger.info(f"📝 OPENAI: Company name being used: '{company_name}'")
             prompt += f"""
 
 Company Website Information:
 {content_preview}
 
-IMPORTANT: Use this website information to PERSONALIZE the email. Mention specific things about their company, services, products, or values that you found on their website. Show that you've done research. Make it relevant and authentic. Reference specific details from their website."""
+CRITICAL INSTRUCTIONS:
+1. You MUST use the website information above to personalize this email
+2. Mention SPECIFIC details from their website (services, products, values, mission, etc.)
+3. Show that you've done research on their company
+4. Reference the company name "{company_name}" in the email (not "None")
+5. Make the email relevant and authentic based on what you learned from their website
+6. DO NOT use generic phrases - be specific about what impressed you from their website
+7. The subject line should also reference something specific from their website or company
+
+Example good personalization: "I noticed on your website that you specialize in [specific service/product]. Your approach to [specific detail] really caught my attention..."
+
+Example bad (generic): "I came across your company and was impressed" - this is too generic."""
         else:
             logger.warning(f"⚠️ OPENAI: No website content available - email will be generic")
             prompt += "\n\nNote: No website content available. Write a professional but generic email."
