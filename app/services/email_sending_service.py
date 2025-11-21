@@ -40,38 +40,19 @@ class EmailSendingService:
             # TEST EMAIL OVERRIDE
             lead_email = "prachirathi0712@gmail.com"
 
-            # Check existing generated email
-            existing_email = (
-                self.db.table("emails_sent")
-                .select("*")
-                .eq("lead_id", lead_id)
-                .eq("email_type", email_type)
-                .eq("status", "generated")
-                .execute()
+            # Generate email content
+            email_content = await self.email_personalization_service.generate_email_for_lead(
+                lead_id=lead_id,
+                email_type=email_type
             )
 
-            if existing_email.data:
-                # Use existing generated content
-                email_record = existing_email.data[0]
-                subject = email_record.get("email_subject")
-                body = email_record.get("email_body")
-                is_personalized = email_record.get("is_personalized", False)
-                company_website_used = email_record.get("company_website_used", False)
+            if not email_content.get("success"):
+                return {"success": False, "error": email_content.get("error")}
 
-            else:
-                # Generate new email
-                email_content = await self.email_personalization_service.generate_email_for_lead(
-                    lead_id=lead_id,
-                    email_type=email_type
-                )
-
-                if not email_content.get("success"):
-                    return {"success": False, "error": email_content.get("error")}
-
-                subject = email_content.get("subject")
-                body = email_content.get("body")
-                is_personalized = email_content.get("is_personalized", False)
-                company_website_used = email_content.get("company_website_used", False)
+            subject = email_content.get("subject")
+            body = email_content.get("body")
+            is_personalized = email_content.get("is_personalized", False)
+            company_website_used = email_content.get("company_website_used", False)
 
             # Send immediately
             return await self._send_email_immediately(
@@ -131,33 +112,10 @@ class EmailSendingService:
             
             sent_at_time = datetime.utcnow().replace(tzinfo=pytz.UTC).isoformat()
 
-            # Check if generated record exists
-            existing_email = (
-                self.db.table("emails_sent")
-                .select("*")
-                .eq("lead_id", lead_id)
-                .eq("email_type", email_type)
-                .eq("status", "generated")
-                .execute()
-            )
-
-            if existing_email.data:
-                email_sent_id = existing_email.data[0]["id"]
-                # Update existing generated email with webhook response
-                update_data = {
-                    "sent_at": sent_at_time,
-                    "status": "sent" if email_sent else "failed"
-                }
-                # Only add webhook response fields if they exist
-                if webhook_response and isinstance(webhook_response, dict):
-                    if webhook_response.get("message_id"):
-                        update_data["gmail_message_id"] = webhook_response.get("message_id")
-                    if webhook_response.get("thread_id"):
-                        update_data["gmail_thread_id"] = webhook_response.get("thread_id")
-                
-                self.db.table("emails_sent").update(update_data).eq("id", email_sent_id).execute()
-            else:
-                # Create new email record
+            # Only create email record if email was successfully sent
+            email_sent_id = None
+            if email_sent:
+                # Create email record with status "SENT"
                 insert_data = {
                     "lead_id": lead_id,
                     "email_to": lead_email,
@@ -166,8 +124,8 @@ class EmailSendingService:
                     "email_type": email_type,
                     "is_personalized": is_personalized,
                     "company_website_used": company_website_used,
-                    "sent_at": sent_at_time if email_sent else None,
-                    "status": "sent" if email_sent else "failed"
+                    "sent_at": sent_at_time,
+                    "status": "SENT"
                 }
                 # Only add webhook response fields if they exist
                 if webhook_response and isinstance(webhook_response, dict):
@@ -177,15 +135,14 @@ class EmailSendingService:
                         insert_data["gmail_thread_id"] = webhook_response.get("thread_id")
                 
                 result_insert = self.db.table("emails_sent").insert(insert_data).execute()
-
                 email_sent_id = result_insert.data[0]["id"] if result_insert.data else None
 
             # Update lead status only if email was successfully sent
             if email_sent:
                 self.db.table("leads").update({"status": "email_sent"}).eq("id", lead_id).execute()
-                logger.info(f"✅ Email sent successfully via webhook to {lead_email} (Lead: {lead_id})")
+                logger.info(f"✅ Email sent successfully via webhook to {lead_email} (Lead: {lead_id}) - Status: SENT")
             else:
-                logger.warning(f"❌ Email sending failed via webhook for {lead_email} (Lead: {lead_id}): {webhook_result.get('error')}")
+                logger.warning(f"❌ Email sending failed via webhook for {lead_email} (Lead: {lead_id}): {webhook_result.get('error')} - No record created")
 
             return {
                 "success": email_sent,
@@ -227,22 +184,17 @@ class EmailSendingService:
             lead = lead_result.data[0]
             test_email = "prachirathi0712@gmail.com"
             
-            # Get existing generated email
-            existing_email = (
-                self.db.table("emails_sent")
-                .select("*")
-                .eq("lead_id", lead_id)
-                .eq("email_type", email_type)
-                .eq("status", "generated")
-                .execute()
+            # Generate email content
+            email_content = await self.email_personalization_service.generate_email_for_lead(
+                lead_id=lead_id,
+                email_type=email_type
             )
             
-            if not existing_email.data:
-                return {"success": False, "error": "No generated email found for this lead"}
+            if not email_content.get("success"):
+                return {"success": False, "error": email_content.get("error", "Failed to generate email")}
             
-            email_record = existing_email.data[0]
-            subject = email_record.get("email_subject")
-            body = email_record.get("email_body")
+            subject = email_content.get("subject")
+            body = email_content.get("body")
             
             # Calculate next business hours time (next weekday 9 AM in lead's timezone)
             timezone = self.timezone_service.get_timezone_for_country(company_country)
@@ -383,6 +335,7 @@ class EmailSendingService:
                     )
                     
                     email_sent = webhook_result.get("success", False) if webhook_result else False
+                    webhook_response = webhook_result.get("webhook_response") or {} if webhook_result else {}
                     
                     if email_sent:
                         # Update queue status to "sent"
@@ -392,10 +345,29 @@ class EmailSendingService:
                             "sent_at": sent_at
                         }).eq("id", queue_id).execute()
                         
+                        # Create email record in emails_sent table with status "SENT"
+                        email_insert_data = {
+                            "lead_id": lead_id,
+                            "email_to": queue_item["email_to"],
+                            "email_subject": queue_item["email_subject"],
+                            "email_body": queue_item["email_body"],
+                            "email_type": queue_item["email_type"],
+                            "sent_at": sent_at,
+                            "status": "SENT"
+                        }
+                        # Add Gmail tracking IDs if available
+                        if webhook_response and isinstance(webhook_response, dict):
+                            if webhook_response.get("message_id"):
+                                email_insert_data["gmail_message_id"] = webhook_response.get("message_id")
+                            if webhook_response.get("thread_id"):
+                                email_insert_data["gmail_thread_id"] = webhook_response.get("thread_id")
+                        
+                        self.db.table("emails_sent").insert(email_insert_data).execute()
+                        
                         # Update lead status
                         self.db.table("leads").update({"status": "email_sent"}).eq("id", lead_id).execute()
                         
-                        logger.info(f"✅ Queued email {queue_id} sent successfully")
+                        logger.info(f"✅ Queued email {queue_id} sent successfully - Status: SENT")
                         sent += 1
                     else:
                         # Update queue status to "failed"

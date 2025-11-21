@@ -4,6 +4,7 @@ Service for managing follow-up emails (5-day and 10-day)
 from typing import Dict, Any, List
 from datetime import datetime, timedelta
 from app.services.email_sending_service import EmailSendingService
+from app.services.timezone_service import TimezoneService
 from app.core.database import SupabaseClient
 import logging
 
@@ -17,6 +18,7 @@ class FollowUpService:
     def __init__(self):
         self.db = SupabaseClient.get_client()
         self._email_sending_service = None
+        self.timezone_service = TimezoneService()
     
     @property
     def email_sending_service(self):
@@ -127,6 +129,7 @@ class FollowUpService:
     async def process_due_followups(self) -> Dict[str, Any]:
         """
         Process follow-ups that are due today and haven't been sent
+        Checks timezone before sending - only sends during business hours (Mon-Fri, 9 AM-7 PM) in lead's timezone
         
         Returns:
             Dict with processing results
@@ -142,11 +145,13 @@ class FollowUpService:
                     "success": True,
                     "processed": 0,
                     "failed": 0,
+                    "skipped_timezone": 0,
                     "message": "No follow-ups due"
                 }
             
             processed = 0
             failed = 0
+            skipped_timezone = 0
             
             for followup in due_followups.data:
                 followup_id = followup["id"]
@@ -165,6 +170,35 @@ class FollowUpService:
                     }).eq("id", followup_id).execute()
                     logger.info(f"Follow-up {followup_id} cancelled - lead has replied")
                     continue
+                
+                # Get lead data to check timezone
+                lead_result = self.db.table("leads").select("company_country").eq("id", lead_id).execute()
+                if not lead_result.data:
+                    logger.warning(f"Lead {lead_id} not found for follow-up {followup_id}")
+                    failed += 1
+                    continue
+                
+                company_country = lead_result.data[0].get("company_country")
+                
+                # Step 1: Check timezone - only proceed if it's Mon-Fri 9-7 in lead's timezone
+                logger.info(f"🕐 Checking timezone for follow-up {followup_id} (type: {followup_type}, country: {company_country})")
+                timezone_check = self.timezone_service.check_lead_business_hours(
+                    country=company_country,
+                    start_hour=9,
+                    end_hour=19  # 7 PM
+                )
+                
+                is_business_hours = timezone_check.get("is_business_hours", False)
+                
+                if not is_business_hours:
+                    reason = timezone_check.get("reason", "Unknown reason")
+                    logger.info(f"⏸️ Follow-up {followup_id} ({followup_type}) - Not in business hours: {reason} ({timezone_check.get('day_name')} {timezone_check.get('current_hour')}:00 in {timezone_check.get('timezone')})")
+                    logger.info(f"📅 Follow-up {followup_id} will be checked again in next scheduler run (every 3 hours)")
+                    skipped_timezone += 1
+                    # Don't update status - keep as "pending" so it will be checked again
+                    continue
+                
+                logger.info(f"✅ Follow-up {followup_id} ({followup_type}) is in business hours ({timezone_check.get('day_name')} {timezone_check.get('current_hour')}:00 in {timezone_check.get('timezone')})")
                 
                 # Check if email sending service is available
                 if not self.email_sending_service:
@@ -195,7 +229,7 @@ class FollowUpService:
                         
                         self.db.table("follow_ups").update(update_data).eq("id", followup_id).execute()
                         processed += 1
-                        logger.info(f"Follow-up {followup_id} sent successfully")
+                        logger.info(f"✅ Follow-up {followup_id} ({followup_type}) sent successfully")
                     else:
                         # Mark as failed
                         self.db.table("follow_ups").update({
@@ -203,7 +237,7 @@ class FollowUpService:
                             "updated_at": datetime.utcnow().isoformat()
                         }).eq("id", followup_id).execute()
                         failed += 1
-                        logger.error(f"Failed to send follow-up {followup_id}: {result.get('error')}")
+                        logger.error(f"❌ Failed to send follow-up {followup_id} ({followup_type}): {result.get('error')}")
                 
                 except Exception as e:
                     logger.error(f"Error processing follow-up {followup_id}: {e}", exc_info=True)
@@ -213,12 +247,13 @@ class FollowUpService:
                     }).eq("id", followup_id).execute()
                     failed += 1
             
-            logger.info(f"Processed follow-ups: {processed} sent, {failed} failed")
+            logger.info(f"📊 Follow-up processing completed: {processed} sent, {failed} failed, {skipped_timezone} skipped (timezone)")
             
             return {
                 "success": True,
                 "processed": processed,
                 "failed": failed,
+                "skipped_timezone": skipped_timezone,
                 "total": len(due_followups.data)
             }
         

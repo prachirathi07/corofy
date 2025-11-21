@@ -133,7 +133,7 @@ CREATE TABLE emails_sent (
     company_website_used BOOLEAN DEFAULT FALSE, -- True if company website was used
     sent_at TIMESTAMP WITH TIME ZONE,
     timezone VARCHAR(100),
-    status VARCHAR(50) DEFAULT 'generated', -- generated, sent, delivered, opened, clicked, replied, bounced
+    status VARCHAR(50), -- 'SENT' when email is sent, NULL otherwise
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 

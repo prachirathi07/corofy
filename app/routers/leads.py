@@ -103,25 +103,8 @@ async def _send_emails_to_leads(lead_ids: List[str], db: Client):
                         email_type="initial"
                     )
                     if email_result.get("success"):
-                        # Store generated email in database
-                        # Use test email for now: prachirathi0712@gmail.com
-                        test_email = "prachirathi0712@gmail.com"
-                        # sent_at is required by database (NOT NULL constraint in actual DB)
-                        # Set it to current time for "generated" status, will be updated when actually sent
-                        current_time = datetime.utcnow().isoformat()
-                        email_data = {
-                            "lead_id": lead_id,
-                            "email_to": test_email,  # Use test email instead of lead.get("email")
-                            "email_subject": email_result.get("subject"),
-                            "email_body": email_result.get("body"),
-                            "email_type": "initial",
-                            "is_personalized": email_result.get("is_personalized", False),
-                            "company_website_used": email_result.get("company_website_used", False),
-                            "status": "generated",
-                            "sent_at": current_time  # Required by DB constraint, will be updated when actually sent
-                        }
-                        email_insert = db.table("emails_sent").insert(email_data).execute()
-                        logger.info(f"✅ Email generated and stored for lead {lead_id} (to: {test_email})")
+                        # Email content generated - will be stored in emails_sent table only when actually sent
+                        logger.info(f"✅ Email content generated for lead {lead_id}")
                         
                         # Step 4: Automatically send or queue the email based on timezone
                         try:

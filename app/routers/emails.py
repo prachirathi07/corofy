@@ -147,45 +147,38 @@ async def process_email_queue(db: Client = Depends(get_db)):
 @router.post("/reset-sent-status")
 async def reset_sent_emails_status(db: Client = Depends(get_db)):
     """
-    Reset all emails with status 'sent' back to 'generated'
+    Delete all emails with status 'SENT' from emails_sent table
     This allows re-sending emails that were previously marked as sent
     """
     try:
-        # Find all emails with status 'sent'
+        # Find all emails with status 'SENT'
         sent_emails = (
             db.table("emails_sent")
             .select("id")
-            .eq("status", "sent")
+            .eq("status", "SENT")
             .execute()
         )
         
         if not sent_emails.data:
             return {
                 "success": True,
-                "message": "No emails with 'sent' status found",
-                "updated_count": 0
+                "message": "No emails with 'SENT' status found",
+                "deleted_count": 0
             }
         
         email_ids = [email["id"] for email in sent_emails.data]
         count = len(email_ids)
         
-        # Update all sent emails to 'generated' status
-        # Set sent_at to current timestamp (since DB requires NOT NULL)
-        from datetime import datetime
-        default_sent_at = datetime.utcnow().isoformat()
-        
+        # Delete all sent emails
         for email_id in email_ids:
-            db.table("emails_sent").update({
-                "status": "generated",
-                "sent_at": default_sent_at  # Keep a timestamp since DB requires NOT NULL
-            }).eq("id", email_id).execute()
+            db.table("emails_sent").delete().eq("id", email_id).execute()
         
-        logger.info(f"✅ Reset {count} emails from 'sent' to 'generated' status")
+        logger.info(f"✅ Deleted {count} emails with 'SENT' status")
         
         return {
             "success": True,
-            "message": f"Successfully reset {count} emails from 'sent' to 'generated' status",
-            "updated_count": count
+            "message": f"Successfully deleted {count} emails with 'SENT' status",
+            "deleted_count": count
         }
     
     except Exception as e:
