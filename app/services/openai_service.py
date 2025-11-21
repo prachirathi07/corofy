@@ -26,8 +26,8 @@ class OpenAIService:
         # Use SYNC client (same as working test script) - this is the correct pattern
         self.client = OpenAI(api_key=self.api_key)
 
-        # Use gpt-4o-mini as requested
-        self.model = "gpt-4o-mini"
+        # Use gpt-4o-mini-2024-07-18 (confirmed available in your account)
+        self.model = "gpt-4.1-mini"
         logger.info(f"🤖 Using model: {self.model}")
 
     async def generate_personalized_email(

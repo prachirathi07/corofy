@@ -3,7 +3,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from app.routers import leads, campaigns, emails, websites, followups, auth
 from app.core.config import settings
+from app.core.exceptions import BaseAPIException
+from app.core.error_handlers import base_api_exception_handler, general_exception_handler
 from app.services.scheduler_service import SchedulerService
+from app.core.database import get_db
 import logging
 import sys
 
@@ -40,6 +43,10 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# Register exception handlers
+app.add_exception_handler(BaseAPIException, base_api_exception_handler)
+app.add_exception_handler(Exception, general_exception_handler)
+
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
@@ -63,5 +70,80 @@ async def root():
 
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy"}
+    """
+    Comprehensive health check endpoint
+    Returns status of all critical services
+    """
+    health_status = {
+        "status": "healthy",
+        "services": {}
+    }
+    
+    # Check Supabase connection
+    try:
+        db = get_db()
+        db.table("leads").select("id").limit(1).execute()
+        health_status["services"]["supabase"] = {"status": "healthy", "message": "Connected"}
+    except Exception as e:
+        health_status["status"] = "degraded"
+        health_status["services"]["supabase"] = {"status": "unhealthy", "message": str(e)}
+    
+    # Check OpenAI API key
+    if settings.OPENAI_API_KEY:
+        health_status["services"]["openai"] = {"status": "configured", "message": "API key present"}
+    else:
+        health_status["status"] = "degraded"
+        health_status["services"]["openai"] = {"status": "not_configured", "message": "API key missing"}
+    
+    # Check Firecrawl API key
+    if settings.FIRECRAWL_API_KEY:
+        health_status["services"]["firecrawl"] = {"status": "configured", "message": "API key present"}
+    else:
+        health_status["status"] = "degraded"
+        health_status["services"]["firecrawl"] = {"status": "not_configured", "message": "API key missing"}
+    
+    # Check scheduler
+    if scheduler_service.scheduler and scheduler_service.scheduler.running:
+        health_status["services"]["scheduler"] = {"status": "running", "message": "Active"}
+    else:
+        health_status["status"] = "degraded"
+        health_status["services"]["scheduler"] = {"status": "stopped", "message": "Not running"}
+    
+    return health_status
+
+@app.get("/api/system/status")
+async def system_status():
+    """
+    Detailed system status for frontend monitoring
+    """
+    try:
+        db = get_db()
+        
+        # Get counts
+        leads_count = len(db.table("leads").select("id").execute().data)
+        pending_emails = len(db.table("email_queue").select("id").eq("status", "pending").execute().data)
+        
+        return {
+            "success": True,
+            "data": {
+                "total_leads": leads_count,
+                "pending_emails": pending_emails,
+                "scheduler_running": scheduler_service.scheduler.running if scheduler_service.scheduler else False,
+                "services": {
+                    "openai": "configured" if settings.OPENAI_API_KEY else "not_configured",
+                    "firecrawl": "configured" if settings.FIRECRAWL_API_KEY else "not_configured",
+                    "supabase": "connected"
+                }
+            }
+        }
+    except Exception as e:
+        logger.error(f"Error getting system status: {e}")
+        return {
+            "success": False,
+            "error": {
+                "code": "SYSTEM_STATUS_ERROR",
+                "message": "Failed to retrieve system status",
+                "details": {"error": str(e)}
+            }
+        }
 

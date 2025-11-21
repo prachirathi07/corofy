@@ -1,5 +1,9 @@
 from pydantic_settings import BaseSettings
 from typing import Optional
+from dotenv import load_dotenv
+
+# Force reload .env file to get latest values
+load_dotenv(override=True)
 
 class Settings(BaseSettings):
     # Supabase (Required)
