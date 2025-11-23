@@ -34,20 +34,28 @@ export default function LeadScraping() {
       if (formData.countries) {
         params.countries = formData.countries.split(',').map(c => c.trim()).filter(c => c);
       }
-      if (formData.sic_codes) {
-        params.sic_codes = formData.sic_codes.split(',').map(c => c.trim()).filter(c => c);
+      
+      // Apollo-specific fields
+      if (formData.source === 'apollo') {
+        if (formData.sic_codes) {
+          params.sic_codes = formData.sic_codes.split(',').map(c => c.trim()).filter(c => c);
+        }
       }
-      if (formData.c_suites) {
-        params.c_suites = formData.c_suites.split(',').map(c => c.trim()).filter(c => c);
-      }
-      if (formData.employee_size_min) {
-        params.employee_size_min = parseInt(formData.employee_size_min);
-      }
-      if (formData.employee_size_max) {
-        params.employee_size_max = parseInt(formData.employee_size_max);
-      }
-      if (formData.industry) {
-        params.industry = formData.industry;
+      
+      // Apify-specific fields
+      if (formData.source === 'apify') {
+        if (formData.c_suites) {
+          params.c_suites = formData.c_suites.split(',').map(c => c.trim()).filter(c => c);
+        }
+        if (formData.employee_size_min) {
+          params.employee_size_min = parseInt(formData.employee_size_min);
+        }
+        if (formData.employee_size_max) {
+          params.employee_size_max = parseInt(formData.employee_size_max);
+        }
+        if (formData.industry) {
+          params.industry = formData.industry;
+        }
       }
 
       const data = await leadsApi.scrape(params);
@@ -77,72 +85,79 @@ export default function LeadScraping() {
         </div>
 
         <div className="form-group">
-          <label>Countries (comma-separated, e.g., India, United States)</label>
+          <label>Countries (comma-separated, e.g., India, United States){formData.source === 'apollo' && ' - Required for Apollo'}</label>
           <input
             type="text"
             value={formData.countries}
             onChange={(e) => setFormData({ ...formData, countries: e.target.value })}
             placeholder="India, United States"
+            required={formData.source === 'apollo'}
           />
         </div>
 
         {formData.source === 'apollo' && (
-          <div className="form-group">
-            <label>SIC Codes (comma-separated, e.g., 2834, 2869, 2879) - Required for Apollo</label>
-            <input
-              type="text"
-              value={formData.sic_codes}
-              onChange={(e) => setFormData({ ...formData, sic_codes: e.target.value })}
-              placeholder="2834, 2869, 2879"
-              required={formData.source === 'apollo'}
-            />
-            <small style={{ color: '#666', fontSize: '12px', display: 'block', marginTop: '4px' }}>
-              SIC codes are required for Apollo scraping. Example: 2834 (Pharmaceuticals), 2869 (Industrial Organic Chemicals)
-            </small>
-          </div>
+          <>
+            <div className="form-group">
+              <label>SIC Codes (comma-separated, e.g., 2834, 2869, 2879) - Required for Apollo</label>
+              <input
+                type="text"
+                value={formData.sic_codes}
+                onChange={(e) => setFormData({ ...formData, sic_codes: e.target.value })}
+                placeholder="2834, 2869, 2879"
+                required={formData.source === 'apollo'}
+              />
+              <small style={{ color: '#666', fontSize: '12px', display: 'block', marginTop: '4px' }}>
+                SIC codes are required for Apollo scraping. Example: 2834 (Pharmaceuticals), 2869 (Industrial Organic Chemicals)
+              </small>
+            </div>
+          </>
         )}
 
-        <div className="form-row">
-          <div className="form-group">
-            <label>C-Suites (comma-separated, e.g., CEO,COO)</label>
-            <input
-              type="text"
-              value={formData.c_suites}
-              onChange={(e) => setFormData({ ...formData, c_suites: e.target.value })}
-              placeholder="CEO, COO, Director"
-            />
-          </div>
-          <div className="form-group">
-            <label>Industry</label>
-            <input
-              type="text"
-              value={formData.industry}
-              onChange={(e) => setFormData({ ...formData, industry: e.target.value })}
-              placeholder="Technology"
-            />
-          </div>
-        </div>
+        {formData.source === 'apify' && (
+          <>
+            <div className="form-row">
+              <div className="form-group">
+                <label>C-Suites (comma-separated, e.g., CEO,COO)</label>
+                <input
+                  type="text"
+                  value={formData.c_suites}
+                  onChange={(e) => setFormData({ ...formData, c_suites: e.target.value })}
+                  placeholder="CEO, COO, Director"
+                />
+              </div>
+              <div className="form-group">
+                <label>Industry</label>
+                <input
+                  type="text"
+                  value={formData.industry}
+                  onChange={(e) => setFormData({ ...formData, industry: e.target.value })}
+                  placeholder="Technology"
+                />
+              </div>
+            </div>
 
-        <div className="form-row">
-          <div className="form-group">
-            <label>Employee Size Min</label>
-            <input
-              type="number"
-              value={formData.employee_size_min}
-              onChange={(e) => setFormData({ ...formData, employee_size_min: e.target.value })}
-              placeholder="1"
-            />
-          </div>
-          <div className="form-group">
-            <label>Employee Size Max</label>
-            <input
-              type="number"
-              value={formData.employee_size_max}
-              onChange={(e) => setFormData({ ...formData, employee_size_max: e.target.value })}
-              placeholder="500"
-            />
-          </div>
-        </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label>Employee Size Min</label>
+                <input
+                  type="number"
+                  value={formData.employee_size_min}
+                  onChange={(e) => setFormData({ ...formData, employee_size_min: e.target.value })}
+                  placeholder="1"
+                />
+              </div>
+              <div className="form-group">
+                <label>Employee Size Max</label>
+                <input
+                  type="number"
+                  value={formData.employee_size_max}
+                  onChange={(e) => setFormData({ ...formData, employee_size_max: e.target.value })}
+                  placeholder="500"
+                />
+              </div>
+            </div>
+          </>
+        )}
 
         <div className="form-group">
           <label>Total Leads Wanted (Max: 10)</label>
@@ -200,7 +215,7 @@ export default function LeadScraping() {
               <ul style={{ marginTop: '10px', paddingLeft: '20px' }}>
                 {result.leads.slice(0, 5).map((lead: any, idx: number) => (
                   <li key={idx} style={{ marginBottom: '5px' }}>
-                    {lead.first_name} {lead.last_name} - {lead.email} ({lead.company_name})
+                    {lead.founder_name || 'N/A'} - {lead.founder_email || 'N/A'} ({lead.company_name || 'N/A'})
                   </li>
                 ))}
               </ul>

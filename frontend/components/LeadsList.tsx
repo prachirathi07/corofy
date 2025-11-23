@@ -18,7 +18,7 @@ export default function LeadsList() {
     setLoading(true);
     setError(null);
     try {
-      const data = await leadsApi.getAll(0, 50, statusFilter || undefined);
+      const data = await leadsApi.getAll(0, 2000, statusFilter || undefined);
       setLeads(data);
     } catch (err: any) {
       setError(err.response?.data?.detail || err.message || 'Failed to load leads');
@@ -63,11 +63,11 @@ export default function LeadsList() {
             <option value="email_sent">Email Sent</option>
             <option value="replied">Replied</option>
           </select>
-          <button 
-            onClick={handleSendEmails} 
+          <button
+            onClick={handleSendEmails}
             className="btn btn-primary"
             disabled={sendingEmails || leads.length === 0}
-            style={{ 
+            style={{
               background: sendingEmails ? '#ccc' : '#0070f3',
               cursor: sendingEmails || leads.length === 0 ? 'not-allowed' : 'pointer'
             }}
@@ -83,9 +83,9 @@ export default function LeadsList() {
       {loading ? (
         <div className="loading">Loading leads...</div>
       ) : leads.length === 0 ? (
-        <div style={{ 
-          padding: '40px', 
-          textAlign: 'center', 
+        <div style={{
+          padding: '40px',
+          textAlign: 'center',
           color: '#666',
           background: '#f5f5f5',
           borderRadius: '8px'
@@ -95,10 +95,10 @@ export default function LeadsList() {
         </div>
       ) : (
         <div>
-          <div style={{ 
-            marginBottom: '15px', 
-            padding: '12px', 
-            background: '#e7f3ff', 
+          <div style={{
+            marginBottom: '15px',
+            padding: '12px',
+            background: '#e7f3ff',
             borderRadius: '4px',
             border: '1px solid #b3d9ff'
           }}>
@@ -120,9 +120,9 @@ export default function LeadsList() {
               </thead>
               <tbody>
                 {leads.map((lead, index) => (
-                  <tr 
+                  <tr
                     key={lead.id || index}
-                    style={{ 
+                    style={{
                       borderBottom: '1px solid #eee',
                       transition: 'background 0.2s'
                     }}
@@ -130,24 +130,24 @@ export default function LeadsList() {
                     onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                   >
                     <td style={{ padding: '12px' }}>
-                      <strong>{lead.first_name || ''} {lead.last_name || ''}</strong>
-                      {(!lead.first_name && !lead.last_name) && <span style={{ color: '#999' }}>N/A</span>}
+                      <strong>{lead.founder_name || ''}</strong>
+                      {!lead.founder_name && <span style={{ color: '#999' }}>N/A</span>}
                     </td>
                     <td style={{ padding: '12px' }}>
-                      {lead.email ? (
-                        <a href={`mailto:${lead.email}`} style={{ color: '#0070f3', textDecoration: 'none' }}>
-                          {lead.email}
+                      {lead.founder_email ? (
+                        <a href={`mailto:${lead.founder_email}`} style={{ color: '#0070f3', textDecoration: 'none' }}>
+                          {lead.founder_email}
                         </a>
                       ) : (
                         <span style={{ color: '#999' }}>N/A</span>
                       )}
                     </td>
-                    <td style={{ padding: '12px' }}>{lead.title || <span style={{ color: '#999' }}>N/A</span>}</td>
+                    <td style={{ padding: '12px' }}>{lead.position || <span style={{ color: '#999' }}>N/A</span>}</td>
                     <td style={{ padding: '12px' }}>
                       {lead.company_name || <span style={{ color: '#999' }}>N/A</span>}
                       {lead.company_website && (
                         <div>
-                          <a 
+                          <a
                             href={lead.company_website.startsWith('http') ? lead.company_website : `https://${lead.company_website}`}
                             target="_blank"
                             rel="noopener noreferrer"
@@ -168,7 +168,7 @@ export default function LeadsList() {
                       )}
                     </td>
                     <td style={{ padding: '12px' }}>
-                      <span 
+                      <span
                         className={`badge badge-${lead.status === 'replied' ? 'success' : lead.status === 'email_sent' ? 'info' : 'warning'}`}
                         style={{
                           padding: '4px 8px',

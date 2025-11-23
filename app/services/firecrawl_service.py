@@ -156,14 +156,15 @@ class FirecrawlService:
             formats = ["markdown"]
         
         try:
+            # Centralized rate limiting
+            from app.core.rate_limiter import rate_limiter
+            await rate_limiter.acquire("firecrawl")
+            
             # Rate limiting: Acquire semaphore slot (max 3 concurrent requests)
             async with self._semaphore:
                 logger.info(f"🌐 FIRECRAWL: Starting scrape for {url}")
                 logger.info(f"🌐 FIRECRAWL: API key present: {bool(self.api_key)}")
                 logger.info(f"🌐 FIRECRAWL: Formats: {formats}")
-                
-                # Small delay to prevent hitting per-second rate limits
-                await asyncio.sleep(0.5)
             
                 # Build payload according to v2 API format
                 payload = {

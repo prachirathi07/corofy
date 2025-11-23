@@ -6,7 +6,7 @@ import httpx
 import json
 from typing import List, Dict, Any, Optional
 from app.core.config import settings
-from app.models.lead import LeadCreate
+from app.models.lead import map_apollo_to_scraped_data
 import logging
 import asyncio
 
@@ -119,14 +119,16 @@ class ApifyService:
                 )
                 
                 if response.status_code == 401:
+                    from app.utils.error_handler import APIError
                     error_detail = response.text
                     logger.error(f"Apify API authentication failed (401): {error_detail}")
-                    raise Exception("Apify API authentication failed (401). Please verify your APIFY_API_TOKEN.")
+                    raise APIError("Apify API authentication failed. Please verify your APIFY_API_TOKEN.", "authentication", 401)
                 
                 if response.status_code == 402:
+                    from app.utils.error_handler import APIError
                     error_detail = response.text
                     logger.error(f"Apify API insufficient credits (402): {error_detail}")
-                    raise Exception("Apify API: Insufficient credits. Please add credits to your Apify account.")
+                    raise APIError("Apify API: Insufficient credits. Please add credits to your Apify account.", "quota", 402)
                 
                 if response.status_code == 400:
                     error_detail = response.text
@@ -335,9 +337,9 @@ class ApifyService:
     def parse_apify_response(
         self,
         items: List[Dict[str, Any]]
-    ) -> List[LeadCreate]:
+    ) -> List[Dict[str, Any]]:
         """
-        Parse Apify dataset items into LeadCreate objects
+        Parse Apify dataset items into scraped_data table format
         
         This method handles various Apify actor output formats.
         Tries multiple field name variations to extract lead data.
@@ -346,7 +348,7 @@ class ApifyService:
             items: List of items from Apify dataset
         
         Returns:
-            List of LeadCreate objects
+            List of dicts matching scraped_data table format
         """
         leads = []
         
@@ -480,32 +482,33 @@ class ApifyService:
                     item.get("linkedin_profile")
                 )
                 
-                # Create lead object
-                lead = LeadCreate(
-                    apollo_id=None,  # Not from Apollo
-                    first_name=first_name,
-                    last_name=last_name,
-                    email=email,
-                    title=title,
-                    company_name=company_name,
-                    company_domain=company_domain,
-                    company_website=company_website,
-                    company_linkedin_url=item.get("companyLinkedIn") or item.get("company_linkedin"),
-                    company_employee_size=company_employee_size,
-                    company_country=company_country,
-                    company_industry=company_industry,
-                    company_sic_code=item.get("sicCode") or item.get("sic_code") or item.get("sic"),
-                    linkedin_url=linkedin_url,
-                    phone=phone,
-                    location=location,
-                    is_c_suite=self._is_c_suite(title or ""),
-                    apollo_data=item  # Store full Apify response
-                )
+                # Combine first and last name
+                full_name = f"{first_name} {last_name}".strip() if (first_name or last_name) else None
                 
-                # Only add if we have at least email or (first_name and last_name)
-                if lead.email or (lead.first_name and lead.last_name):
-                    leads.append(lead)
-                    logger.debug(f"Parsed lead {len(leads)}: {lead.first_name} {lead.last_name} - {lead.email} ({lead.company_name})")
+                # Create lead dict matching scraped_data table format
+                lead_data = {
+                    "founder_name": full_name,
+                    "company_name": company_name,
+                    "position": title,
+                    "founder_email": email,
+                    "founder_linkedin": linkedin_url,
+                    "founder_address": location,
+                    "company_industry": company_industry,
+                    "company_website": company_website,
+                    "company_linkedin": item.get("companyLinkedIn") or item.get("company_linkedin"),
+                    "company_blogpost": None,  # Not typically in Apify data
+                    "company_angellist": None,  # Not typically in Apify data
+                    "company_phone": phone,
+                    "mail_status": "new",
+                    "is_verified": False,
+                    "followup_5_sent": False,
+                    "followup_10_sent": False
+                }
+                
+                # Only add if we have at least email or name
+                if lead_data["founder_email"] or lead_data["founder_name"]:
+                    leads.append(lead_data)
+                    logger.debug(f"Parsed lead {len(leads)}: {lead_data['founder_name']} - {lead_data['founder_email']} ({lead_data['company_name']})")
                 else:
                     logger.warning(f"Skipping item {idx}: No email or name found. Keys: {list(item.keys())}")
             
@@ -828,7 +831,7 @@ class ApifyService:
         logger.info(f"Parsed {len(leads)} leads from {len(items)} items")
         
         return {
-            "leads": [lead.model_dump() for lead in leads],
+            "leads": leads,  # Already dicts matching scraped_data format
             "total": len(leads),
             "items": items  # Raw items for reference
         }

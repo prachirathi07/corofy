@@ -162,23 +162,44 @@ class FollowUpService:
                 # Check if lead has already replied
                 reply_check = self.db.table("email_replies").select("*").eq("email_sent_id", email_sent_id).execute()
                 
+                # Also check mail_status in scraped_data
+                lead_data = lead_result.data[0]
+                mail_status = lead_data.get("mail_status", "new")
+                
                 if reply_check.data and len(reply_check.data) > 0:
-                    # Lead has replied - cancel follow-up
+                    # Lead has replied - cancel follow-up and update status
                     self.db.table("follow_ups").update({
                         "status": "replied",
                         "updated_at": datetime.utcnow().isoformat()
                     }).eq("id", followup_id).execute()
-                    logger.info(f"Follow-up {followup_id} cancelled - lead has replied")
+                    
+                    # Update mail_status to reply_received
+                    self.db.table("scraped_data").update({
+                        "mail_status": "reply_received"
+                    }).eq("id", lead_id).execute()
+                    
+                    logger.info(f"Follow-up {followup_id} cancelled - lead has replied. Updated mail_status to reply_received.")
+                    continue
+                
+                # Check if mail_status is not "email_sent" - don't send followup
+                if mail_status != "email_sent":
+                    logger.info(f"Follow-up {followup_id} skipped - mail_status is '{mail_status}', not 'email_sent'")
+                    self.db.table("follow_ups").update({
+                        "status": "cancelled",
+                        "updated_at": datetime.utcnow().isoformat()
+                    }).eq("id", followup_id).execute()
                     continue
                 
                 # Get lead data to check timezone
-                lead_result = self.db.table("leads").select("company_country").eq("id", lead_id).execute()
+                # Note: scraped_data doesn't have company_country, using None (will default to UTC)
+                lead_result = self.db.table("scraped_data").select("*").eq("id", lead_id).execute()
                 if not lead_result.data:
                     logger.warning(f"Lead {lead_id} not found for follow-up {followup_id}")
                     failed += 1
                     continue
                 
-                company_country = lead_result.data[0].get("company_country")
+                # scraped_data doesn't have company_country field, use None (defaults to UTC)
+                company_country = None
                 
                 # Step 1: Check timezone - only proceed if it's Mon-Fri 9-7 in lead's timezone
                 logger.info(f"🕐 Checking timezone for follow-up {followup_id} (type: {followup_type}, country: {company_country})")
@@ -228,6 +249,18 @@ class FollowUpService:
                             update_data["email_queue_id"] = result.get("queue_id")
                         
                         self.db.table("follow_ups").update(update_data).eq("id", followup_id).execute()
+                        
+                        # Update mail_status based on followup type
+                        if followup_type == "5day":
+                            # First followup sent - status stays "email_sent" (will be updated to "2nd followup sent" after 10 days)
+                            logger.info(f"✅ Follow-up {followup_id} (5day) sent successfully. mail_status remains 'email_sent'.")
+                        elif followup_type == "10day":
+                            # Second followup sent - update status to "2nd followup sent"
+                            self.db.table("scraped_data").update({
+                                "mail_status": "2nd followup sent"
+                            }).eq("id", lead_id).execute()
+                            logger.info(f"✅ Follow-up {followup_id} (10day) sent successfully. Updated mail_status to '2nd followup sent'.")
+                        
                         processed += 1
                         logger.info(f"✅ Follow-up {followup_id} ({followup_type}) sent successfully")
                     else:

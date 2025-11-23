@@ -32,7 +32,7 @@ class EmailSendingService:
     ) -> Dict[str, Any]:
         try:
             # Fetch lead
-            lead_result = self.db.table("leads").select("*").eq("id", lead_id).execute()
+            lead_result = self.db.table("scraped_data").select("*").eq("id", lead_id).execute()
             if not lead_result.data:
                 return {"success": False, "error": "Lead not found"}
 
@@ -140,7 +140,7 @@ class EmailSendingService:
 
             # Update lead status only if email was successfully sent
             if email_sent:
-                self.db.table("leads").update({"status": "email_sent"}).eq("id", lead_id).execute()
+                self.db.table("scraped_data").update({"status": "email_sent"}).eq("id", lead_id).execute()
                 logger.info(f"✅ Email sent successfully via webhook to {lead_email} (Lead: {lead_id}) - Status: SENT")
             else:
                 logger.warning(f"❌ Email sending failed via webhook for {lead_email} (Lead: {lead_id}): {webhook_result.get('error')} - No record created")
@@ -178,7 +178,7 @@ class EmailSendingService:
         """
         try:
             # Fetch lead
-            lead_result = self.db.table("leads").select("*").eq("id", lead_id).execute()
+            lead_result = self.db.table("scraped_data").select("*").eq("id", lead_id).execute()
             if not lead_result.data:
                 return {"success": False, "error": "Lead not found"}
 
@@ -369,7 +369,7 @@ class EmailSendingService:
                         self.db.table("emails_sent").insert(email_insert_data).execute()
                         
                         # Update lead status
-                        self.db.table("leads").update({"status": "email_sent"}).eq("id", lead_id).execute()
+                        self.db.table("scraped_data").update({"status": "email_sent"}).eq("id", lead_id).execute()
                         
                         logger.info(f"✅ Queued email {queue_id} sent successfully - Status: SENT")
                         sent += 1

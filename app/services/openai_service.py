@@ -26,8 +26,8 @@ class OpenAIService:
         # Use SYNC client (same as working test script) - this is the correct pattern
         self.client = OpenAI(api_key=self.api_key)
 
-        # Use gpt-4o-mini-2024-07-18 (confirmed available in your account)
-        self.model = "gpt-4.1-mini"
+        # Use gpt-4o-mini (correct model name)
+        self.model = "gpt-4o-mini"
         logger.info(f"🤖 Using model: {self.model}")
 
     async def generate_personalized_email(
@@ -79,6 +79,10 @@ class OpenAIService:
                     temperature=0.7
                 )
             
+            # Centralized rate limiting
+            from app.core.rate_limiter import rate_limiter
+            await rate_limiter.acquire("openai")
+            
             # Run sync call in thread pool to avoid blocking
             logger.info(f"🔄 Calling OpenAI API with model: {self.model}")
             response = await asyncio.to_thread(_call_openai)
@@ -123,11 +127,23 @@ class OpenAIService:
             }
 
         except Exception as e:
-            error_msg = str(e)
-            logger.error(f"❌ OpenAI Error: {error_msg}", exc_info=True)
-
-            # Detailed error diagnostics
-            if "429" in error_msg or "quota" in error_msg.lower() or "insufficient_quota" in error_msg.lower():
+            from app.utils.error_handler import format_error_response
+            
+            # Get status code if available
+            status_code = None
+            error_text = str(e)
+            if hasattr(e, 'status_code'):
+                status_code = e.status_code
+            elif hasattr(e, 'response') and hasattr(e.response, 'status_code'):
+                status_code = e.response.status_code
+                if hasattr(e.response, 'text'):
+                    error_text = e.response.text
+            
+            # Format error response
+            error_response = format_error_response(e, "OpenAI", status_code, error_text)
+            
+            # Additional diagnostics for quota errors
+            if error_response["error_type"] == "quota":
                 key_preview = f"{self.api_key[:20]}...{self.api_key[-10:]}" if len(self.api_key) > 30 else "***"
                 logger.error("=" * 80)
                 logger.error("⚠️ QUOTA/BILLING ERROR DETECTED")
@@ -139,13 +155,14 @@ class OpenAIService:
                 logger.error("   3. API key doesn't have access to this model")
                 logger.error("   Solution: Create a NEW API key after adding funds to your account")
                 logger.error("=" * 80)
-
-            if "model" in error_msg.lower() and "not found" in error_msg.lower():
+            
+            if "model" in error_text.lower() and "not found" in error_text.lower():
                 logger.error(f"⚠ MODEL NOT AVAILABLE: {self.model}")
 
             return {
                 "success": False,
-                "error": error_msg,
+                "error": error_response["error"],
+                "error_type": error_response["error_type"],
                 "subject": None,
                 "body": None,
                 "industry": None
@@ -167,27 +184,74 @@ class OpenAIService:
 
         company_name = company_name or "the company"
         
-        # Convert catalogs to string for prompt
-        catalogs_str = json.dumps(PRODUCT_CATALOGS, indent=2)
+        # Define the specific product catalogs for core industries
+        product_catalogs = {
+            "Lubricant Industry": [
+                "Monoethylene Glycol", "Diethylene Glycol", "Urea Solution / Diesel Exhaust Fluid / AdBlue",
+                "Total Base Number Improver Calcium based", "Zinc Booster", "Dispersant / Polyisobutylene Succinimide / PIBSI",
+                "Additive Packages for Petro and Diesel Engine", "Pour Point Depressant", "Break Flud DOT 3 & DOT 4"
+            ],
+            "Oil & Gas Industry": [
+                "Cloud Point Glycol for Drilling", "Nonionic Polyalkylimide Glycol Blend", "Nonionic foaming agent",
+                "Drilling Detergent", "Monoethylene Glycol", "Triethylene Glycol", "PAC - Polyanionic Cellulose",
+                "Carboxymethyl Cellulose / CMC", "XC Polymer Xanthan Gum based", "Mono Ethanol Amine",
+                "Sulfonated Asphalt", "Calcium Bromide Liquid 52%", "Primary & Secondary Emulsifier",
+                "Corrosion Inhibitor Imidazoline Based", "Demulsifier Concentrate", "Pour Point Depressant",
+                "Defoamers- Glycol, Silicone and Ethoxylate based", "Organophilic Clay", "N Methyl Aniline",
+                "Methyl Diethylene Glycol", "Mud Thinner", "Mud Wetting Agent"
+            ],
+            "Agrochemical Industry": [
+                "Calcium Alkylbenzene Sulfonate / CaDDBS", "Nonylphenol Ethoxylate", "Castor Oil Ethoxylate",
+                "Styrenated Phenol Ethoxylate / Tristyrylphenol Ethoxylate", "Blended Emulsifier Pair for EC",
+                "Precipitated Silica", "Dispersing Agent for SC", "Wetting Agent for SC",
+                "Dispersing Agent for WP & WDG", "Wetting Agent for WP & WDG", "Silicone Based Antifoam or Defoamer",
+                "Strong Adjuvant", "Sulfur Wettable Dry Granules", "Chelated Metals as Microneutrients"
+            ]
+        }
+        
+        catalogs_str = json.dumps(product_catalogs, indent=2)
 
         prompt = f"""
-TASK:
-1. Analyze the provided company website content to understand their business.
-2. Classify the company into ONE of these industries: "Agrochemical", "Oil & Gas", "Lubricant", or "Other".
-3. Select 2-3 relevant Corofy products from the PROVIDED PRODUCT CATALOGS below that match their industry.
-4. Write a personalized outreach email pitching those specific products.
+You are an AI email writer for Corofy Chemical Specialist (Corofy LLC), a global chemical supplier based in Dubai.
 
-PROVIDED PRODUCT CATALOGS:
-{catalogs_str}
+Your task: Generate a professional, personalized cold outreach email.
+
+Input: Scraped data about a target company (its products, services, industry, location, etc.).
 
 RECIPIENT DETAILS:
 Name: {lead_name}
 Title: {lead_title}
 Company: {company_name}
-"""
 
-        if company_industry:
-            prompt += f"Hinted Industry: {company_industry}\n"
+CORE PRODUCT CATALOGS (Use these EXACTLY if applicable):
+{catalogs_str}
+
+STEPS:
+1. Analyze the scraped data to understand what the company does, its focus industry, and possible needs.
+
+2. Identify the company's industry category:
+   - **Core Industries**: Lubricant Industry, Oil & Gas Industry, Agrochemical Industry.
+   - **Other Industries**: Water Treatment, Specialty Chemicals, Paints & Coatings, or ANY other chemical-related sector.
+
+3. **Product Selection Strategy**:
+   - **IF Core Industry**: You MUST select 3-5 relevant products from the PROVIDED CATALOG above. Do not invent products.
+   - **IF Other Industry**: You must DYNAMICALLY suggest relevant chemical solutions that Corofy (as a global supplier) would likely offer for that specific industry. Base this on standard industry needs and the company's website content.
+
+4. Write a customized outreach email:
+   - Introduce Corofy Chemical Specialist as a trusted global supplier.
+   - Include a short, relevant paragraph (2–3 lines) mentioning the key products/solutions (either from the catalog or dynamically selected).
+   - Highlight benefits specific to their business.
+
+5. Keep the email clear, polite, and professional.
+
+EMAIL STYLE:
+- Short and to the point (150–200 words).
+- Personalize with the company name and relevant context from scraped data.
+- Mention location or region naturally if available.
+- Maintain a warm yet concise tone.
+- Avoid buzzwords or filler phrases.
+
+"""
 
         if company_website_content:
             preview = company_website_content[:8000]
@@ -196,24 +260,14 @@ COMPANY WEBSITE CONTENT:
 {'='*80}
 {preview}
 {'='*80}
-
-CRITICAL REQUIREMENTS:
-1. You MUST reference specific details from the website content (products, values, news).
-2. You MUST mention "{company_name}" by name in the email body.
-3. You MUST mention 2-3 specific Corofy products from the catalog that are relevant to them.
-4. FORBIDDEN PHRASES: "I came across your company", "I noticed", "I hope this email finds you well".
-5. Tone: Professional, direct, and value-oriented.
 """
         else:
-            prompt += "\nNo website content provided. Write a generic but professional email pitching Corofy's chemical solutions.\n"
-
-        if custom_context:
-            prompt += f"\nAdditional context: {custom_context}\n"
+            prompt += "\nNo website content provided. Infer industry from company name or use general chemical supplier pitch.\n"
 
         prompt += """
 OUTPUT FORMAT (JSON):
 {
-    "industry": "Agrochemical" | "Oil & Gas" | "Lubricant" | "Other",
+    "industry": "Lubricant Industry" | "Oil & Gas Industry" | "Agrochemical Industry" | "Water Treatment" | "Specialty Chemicals" | "Other",
     "subject": "...",
     "body": "..."
 }

@@ -40,7 +40,7 @@ class EmailPersonalizationService:
         """
         try:
             # Get lead data
-            lead_result = self.db.table("leads").select("*").eq("id", lead_id).execute()
+            lead_result = self.db.table("scraped_data").select("*").eq("id", lead_id).execute()
             
             if not lead_result.data or len(lead_result.data) == 0:
                 return {
@@ -51,7 +51,12 @@ class EmailPersonalizationService:
             lead = lead_result.data[0]
             
             # Get website content FIRST - we need to check if it's available before deciding to use existing email
-            company_domain = lead.get("company_domain")
+            company_website = lead.get("company_website", "")
+            company_domain = None
+            if company_website:
+                # Extract domain from website URL
+                company_domain = company_website.replace("https://", "").replace("http://", "").split("/")[0]
+            
             company_website_content = None
             website_scraped = False
             
@@ -70,8 +75,7 @@ class EmailPersonalizationService:
                         logger.warning(f"⚠️ PERSONALIZATION: Cached content exists but is empty for {company_domain}")
                 else:
                     # Try to scrape if we have website URL
-                    company_website = lead.get("company_website")
-                    if company_website or company_domain:
+                    if company_website:
                         logger.info(f"🌐 PERSONALIZATION: No cache found, scraping website for {company_domain}")
                         scrape_result = await self.website_service.scrape_company_website(
                             company_domain=company_domain,
@@ -84,13 +88,18 @@ class EmailPersonalizationService:
                                 website_scraped = True
                                 logger.info(f"✅ PERSONALIZATION: Successfully scraped website for {company_domain} (length: {len(company_website_content)} chars)")
                             else:
-                                logger.warning(f"⚠️ PERSONALIZATION: Scrape succeeded but content is empty for {company_domain}")
+                                # Scrape succeeded but content is empty - treat as no content
+                                company_website_content = None
+                                logger.warning(f"⚠️ PERSONALIZATION: Scrape succeeded but content is empty for {company_domain}. Will use industry template.")
                         else:
-                            logger.warning(f"⚠️ PERSONALIZATION: Failed to scrape website for {company_domain}: {scrape_result.get('error')}")
+                            # Scraping failed (invalid domain/website) - treat as no content
+                            company_website_content = None
+                            error_reason = scrape_result.get('error', 'Unknown error')
+                            logger.warning(f"⚠️ PERSONALIZATION: Failed to scrape website for {company_domain}: {error_reason}. Will use industry template.")
                     else:
-                        logger.warning(f"⚠️ PERSONALIZATION: No website URL or domain to scrape for {company_domain}")
+                        logger.warning(f"⚠️ PERSONALIZATION: No website URL to scrape for {company_domain}")
             else:
-                logger.warning(f"⚠️ PERSONALIZATION: No company domain for lead {lead_id}, cannot personalize")
+                logger.warning(f"⚠️ PERSONALIZATION: No company website for lead {lead_id}, cannot personalize")
             
             # Check if email already generated (unless force_regenerate OR we have website content that wasn't used)
             should_regenerate = force_regenerate
@@ -130,7 +139,7 @@ class EmailPersonalizationService:
             
             # Generate email using OpenAI
             company_name = lead.get("company_name") or "their company"
-            lead_name = f"{lead.get('first_name', '')} {lead.get('last_name', '')}".strip() or lead.get('email', '').split('@')[0]
+            lead_name = lead.get("founder_name", "") or lead.get("founder_email", "").split('@')[0] if lead.get("founder_email") else "there"
             
             logger.info(f"🤖 PERSONALIZATION: Generating email with OpenAI")
             logger.info(f"   - Lead: {lead_name}")
@@ -139,7 +148,7 @@ class EmailPersonalizationService:
             
             email_result = await self.openai_service.generate_personalized_email(
                 lead_name=lead_name,
-                lead_title=lead.get("title", ""),
+                lead_title=lead.get("position", ""),
                 company_name=company_name,
                 company_website_content=company_website_content,
                 company_industry=lead.get("company_industry"),
@@ -150,13 +159,32 @@ class EmailPersonalizationService:
             
             if email_result.get("success"):
                 # Select Template based on Industry
-                # RULE: Only use industry-specific templates if we actually have website content to verify the industry.
-                # If no website content, force "Other" to use the DEFAULT_TEMPLATE.
+                # RULE: If we have website content, use AI-detected industry.
+                # If no website content, use industry from frontend (stored in company_industry).
                 if company_website_content and len(company_website_content.strip()) > 0:
                     industry = email_result.get("industry", "Other")
+                    logger.info(f"✅ Using AI-detected industry from website content: {industry}")
                 else:
-                    industry = "Other"
-                    logger.info(f"ℹ️ No website content available. Forcing use of DEFAULT_TEMPLATE.")
+                    # No website content - use industry from frontend
+                    frontend_industry = lead.get("company_industry", "").strip()
+                    if frontend_industry:
+                        # Map frontend industry to template industry
+                        industry_mapping = {
+                            "agrochemical": "Agrochemical",
+                            "oil & gas": "Oil & Gas",
+                            "oil and gas": "Oil & Gas",
+                            "lubricant": "Lubricant",
+                            "lubricants": "Lubricant"
+                        }
+                        industry = industry_mapping.get(frontend_industry.lower(), "Other")
+                        if industry != "Other":
+                            logger.info(f"ℹ️ No website content available. Using industry from frontend: {frontend_industry} -> {industry}")
+                        else:
+                            logger.info(f"ℹ️ No website content available. Frontend industry '{frontend_industry}' doesn't match template industries. Using DEFAULT_TEMPLATE.")
+                            industry = "Other"
+                    else:
+                        industry = "Other"
+                        logger.info(f"ℹ️ No website content and no industry from frontend. Using DEFAULT_TEMPLATE.")
 
                 template = EMAIL_TEMPLATES.get(industry, DEFAULT_TEMPLATE)
                 
@@ -183,24 +211,39 @@ class EmailPersonalizationService:
                 }
             else:
                 # Fallback to default template when OpenAI fails
-                logger.warning(f"OpenAI generation failed, using default template: {email_result.get('error')}")
+                logger.warning(f"OpenAI generation failed, using industry template: {email_result.get('error')}")
                 
-                lead_name = f"{lead.get('first_name', '')} {lead.get('last_name', '')}".strip() or lead.get('email', '').split('@')[0]
+                lead_name = lead.get("founder_name", "") or (lead.get("founder_email", "").split('@')[0] if lead.get("founder_email") else "there")
                 greeting_name = lead_name.split()[0] if lead_name else "there"
                 company_name = lead.get("company_name", "their company")
+                
+                # Try to use industry template from frontend
+                frontend_industry = lead.get("company_industry", "").strip()
+                industry_mapping = {
+                    "agrochemical": "Agrochemical",
+                    "oil & gas": "Oil & Gas",
+                    "oil and gas": "Oil & Gas",
+                    "lubricant": "Lubricant",
+                    "lubricants": "Lubricant"
+                }
+                industry = industry_mapping.get(frontend_industry.lower(), "Other") if frontend_industry else "Other"
+                template = EMAIL_TEMPLATES.get(industry, DEFAULT_TEMPLATE)
                 
                 # Simple default content
                 default_subject = f"Potential collaboration with {company_name}"
                 default_pitch = f"I hope this email finds you well. I came across {company_name} and was impressed by your work. I'd love to explore potential collaboration opportunities."
                 
-                # Use default HTML template
-                final_html_body = DEFAULT_TEMPLATE.replace("{{LeadName}}", greeting_name)
-                final_html_body = final_html_body.replace("{{BodyContent}}", default_pitch)
+                # Use industry-specific or default HTML template
+                final_html_body = template.replace("{{LeadName}}", greeting_name)
+                # Industry templates don't have {{BodyContent}}, so only replace if it exists
+                if "{{BodyContent}}" in final_html_body:
+                    final_html_body = final_html_body.replace("{{BodyContent}}", default_pitch)
                 
                 return {
                     "success": True,
                     "subject": default_subject,
                     "body": final_html_body,
+                    "industry": industry,
                     "is_personalized": False,
                     "company_website_used": False,
                     "from_cache": False,

@@ -7,16 +7,16 @@ from app.core.exceptions import BaseAPIException
 from app.core.error_handlers import base_api_exception_handler, general_exception_handler
 from app.services.scheduler_service import SchedulerService
 from app.core.database import get_db
+from app.core.logging_config import setup_logging
+from app.core.middleware import RequestIDMiddleware
 import logging
 import sys
 
-# Configure logging
-logging.basicConfig(
-    level=getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO),
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(sys.stdout)
-    ]
+# Setup comprehensive logging
+setup_logging(
+    log_level=settings.LOG_LEVEL.upper(),
+    enable_file_logging=True,
+    enable_json_logging=False
 )
 
 logger = logging.getLogger(__name__)
@@ -56,6 +56,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Request ID tracking middleware
+app.add_middleware(RequestIDMiddleware)
+
 # Include routers
 app.include_router(leads.router, prefix="/api/leads", tags=["leads"])
 app.include_router(campaigns.router, prefix="/api/campaigns", tags=["campaigns"])
@@ -82,7 +85,7 @@ async def health_check():
     # Check Supabase connection
     try:
         db = get_db()
-        db.table("leads").select("id").limit(1).execute()
+        db.table("scraped_data").select("id").limit(1).execute()
         health_status["services"]["supabase"] = {"status": "healthy", "message": "Connected"}
     except Exception as e:
         health_status["status"] = "degraded"
@@ -120,7 +123,7 @@ async def system_status():
         db = get_db()
         
         # Get counts
-        leads_count = len(db.table("leads").select("id").execute().data)
+        leads_count = len(db.table("scraped_data").select("id").execute().data)
         pending_emails = len(db.table("email_queue").select("id").eq("status", "pending").execute().data)
         
         return {

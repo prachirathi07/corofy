@@ -51,8 +51,10 @@ class GmailService:
             return service
         
         except Exception as e:
-            logger.error(f"Failed to build Gmail service: {e}")
-            raise Exception(f"Gmail authentication failed: {str(e)}")
+            from app.utils.error_handler import format_error_response
+            error_info = format_error_response(e, "Gmail", None, str(e))
+            logger.error(f"Failed to build Gmail service: {error_info['technical_message']}")
+            raise Exception(f"Gmail authentication failed: {error_info['user_message']}")
     
     def send_email(
         self,
@@ -110,12 +112,26 @@ class GmailService:
             }
         
         except Exception as e:
-            logger.error(f"Error sending email to {to_email}: {e}", exc_info=True)
+            from app.utils.error_handler import format_error_response
+            
+            # Get status code if available (from Google API errors)
+            status_code = None
+            error_text = str(e)
+            if hasattr(e, 'status_code'):
+                status_code = e.status_code
+            elif hasattr(e, 'resp') and hasattr(e.resp, 'status'):
+                status_code = e.resp.status
+            
+            error_info = format_error_response(e, "Gmail", status_code, error_text)
+            logger.error(f"Error sending email to {to_email}: {error_info['technical_message']}", exc_info=True)
+            
             return {
                 "success": False,
-                "error": str(e),
+                "error": error_info["error"],
+                "error_type": error_info["error_type"],
                 "message_id": None,
-                "thread_id": None
+                "thread_id": None,
+                "status_code": error_info.get("status_code")
             }
     
     def get_message(self, message_id: str) -> Optional[Dict[str, Any]]:
@@ -138,7 +154,16 @@ class GmailService:
             return message
         
         except Exception as e:
-            logger.error(f"Error getting message {message_id}: {e}")
+            from app.utils.error_handler import format_error_response
+            
+            status_code = None
+            if hasattr(e, 'status_code'):
+                status_code = e.status_code
+            elif hasattr(e, 'resp') and hasattr(e.resp, 'status'):
+                status_code = e.resp.status
+            
+            error_info = format_error_response(e, "Gmail", status_code, str(e))
+            logger.error(f"Error getting message {message_id}: {error_info['technical_message']}")
             return None
     
     def get_thread_messages(self, thread_id: str) -> list:
@@ -162,6 +187,15 @@ class GmailService:
             return messages
         
         except Exception as e:
-            logger.error(f"Error getting thread {thread_id}: {e}")
+            from app.utils.error_handler import format_error_response
+            
+            status_code = None
+            if hasattr(e, 'status_code'):
+                status_code = e.status_code
+            elif hasattr(e, 'resp') and hasattr(e.resp, 'status'):
+                status_code = e.resp.status
+            
+            error_info = format_error_response(e, "Gmail", status_code, str(e))
+            logger.error(f"Error getting thread {thread_id}: {error_info['technical_message']}")
             return []
 

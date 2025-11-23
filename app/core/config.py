@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     # Firecrawl API (Required for website scraping)
     FIRECRAWL_API_KEY: Optional[str] = None
     
+    # n8n Webhook (Required for email sending)
+    N8N_WEBHOOK_URL: str  # Required - no default
+    
     # Gmail API
     GMAIL_CLIENT_ID: Optional[str] = None
     GMAIL_CLIENT_SECRET: Optional[str] = None
