@@ -399,3 +399,23 @@ export const getProductBySelection = (industry: string, brandName: string, chemi
     p => p.industry === industry && p.brandName === brandName && p.chemicalName === chemicalName
   );
 };
+
+export const getBrandsByCountry = (industry: string, country: string): string[] => {
+  return Array.from(new Set(
+    productData
+      .filter(product => product.industry === industry && product.targetCountries.includes(country))
+      .map(product => product.brandName)
+  ));
+};
+
+export const getChemicalsByBrandAndCountry = (industry: string, brandName: string, country: string): string[] => {
+  return Array.from(new Set(
+    productData
+      .filter(product =>
+        product.industry === industry &&
+        product.brandName === brandName &&
+        product.targetCountries.includes(country)
+      )
+      .map(product => product.chemicalName)
+  ));
+};

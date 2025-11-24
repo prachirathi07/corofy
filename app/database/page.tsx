@@ -1,8 +1,16 @@
+'use client';
+
+import { useEffect } from 'react';
 import DatabaseLayout from '@/components/DatabaseLayout';
 import FoundersTable from '@/components/FoundersTable';
 import ProtectedRoute from '@/components/ProtectedRoute';
 
 export default function DatabasePage() {
+  // Scroll to top when component mounts (when navigating to this page)
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   return (
     <ProtectedRoute>
       <DatabaseLayout>
@@ -14,7 +22,7 @@ export default function DatabasePage() {
                 View and manage all founders stored in the database
               </p>
             </div>
-            
+
             <FoundersTable />
           </div>
         </div>

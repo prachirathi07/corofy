@@ -1,10 +1,35 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Founder } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
+import { supabase } from '../lib/supabaseClient';
 import Pagination from '@mui/material/Pagination';
 import Stack from '@mui/material/Stack';
+
+// Local Founder type (Supabase removed)
+interface Founder {
+  id: string;
+  'Founder Name'?: string | null;
+  'Company Name'?: string | null;
+  'Founder Email'?: string | null;
+  "Company's Industry"?: string | null;
+  'Verification'?: boolean | null;
+  'Mail Status'?: string | null;
+  '5 Min Sent'?: boolean | null;
+  '10 Min Sent'?: boolean | null;
+  '1st Follow-Up Sent (5 days)'?: string | null;
+  '2nd Follow-Up Sent (10 days)'?: string | null;
+  'Priority based on Reply'?: string | null;
+  'Mail Replys'?: string | null;
+  'Position'?: string | null;
+  'Founder Linkedin'?: string | null;
+  'Founder Address'?: string | null;
+  'Company Website'?: string | null;
+  'Company Linkedin'?: string | null;
+  'Company Phone'?: string | null;
+  created_at?: string | null;
+  [key: string]: unknown;
+}
 
 export default function FoundersTable() {
   const { user } = useAuth();
@@ -27,184 +52,71 @@ export default function FoundersTable() {
   const [showDeleteErrorPopup, setShowDeleteErrorPopup] = useState(false);
   const [deleteMessage, setDeleteMessage] = useState('');
   const [showLimitToast, setShowLimitToast] = useState(false);
-  
+  const [showLimitPopup, setShowLimitPopup] = useState(false);
+
   // Email limit and timer states
   const EMAIL_LIMIT = 400;
   const [emailSendTimestamp, setEmailSendTimestamp] = useState<number | null>(null);
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
   const [canSendEmails, setCanSendEmails] = useState(true);
   const [totalEmailsSent, setTotalEmailsSent] = useState<number>(0); // Track cumulative emails sent
-  
-  // Configure your webhook URL here - now using environment variable
-  const WEBHOOK_URL = process.env.NEXT_PUBLIC_WEBHOOK_URL_FOUNDERS_TABLE || 'https://n8n.srv963601.hstgr.cloud/webhook/56f43b46-2fd1-4821-bbc7-1d20547e88b9';
 
   const refreshData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      // Fetch data from Supabase only
-      const url = selectedIndustry
-        ? `/api/founders?industry=${encodeURIComponent(selectedIndustry)}`
-        : '/api/founders';
-      
-      console.log('🔄 Fetching data from:', url);
-      console.log('🌐 Current window location:', window.location.href);
-      console.log('🔗 Full URL will be:', window.location.origin + url);
-      
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        cache: 'no-cache',
-      });
-      
-      console.log('📡 Response received:', {
-        status: response.status,
-        statusText: response.statusText,
-        ok: response.ok,
-        headers: Object.fromEntries(response.headers.entries())
-      });
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ Response error:', errorText);
-        throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
-      }
-      
-      const data = await response.json();
-      console.log('✅ Data received:', data);
-      
-      if (data.success) {
-        const founders = Array.isArray(data.data) ? data.data : [];
-        
-        // Debug: Log the first founder's follow-up data
-        if (founders.length > 0) {
-          console.log('🔍 Debug - First founder follow-up data:', {
-            id: founders[0].id,
-            '1st Follow-Up Sent (5 days)': founders[0]['1st Follow-Up Sent (5 days)'],
-            '2nd Follow-Up Sent (10 days)': founders[0]['2nd Follow-Up Sent (10 days)'],
-            '1st Follow-Up Sent (5 days) type': typeof founders[0]['1st Follow-Up Sent (5 days)'],
-            '2nd Follow-Up Sent (10 days) type': typeof founders[0]['2nd Follow-Up Sent (10 days)']
-          });
-        }
-        
-        // Sort by created_at in descending order (newest first)
-        const sortedFounders = founders.sort((a: Founder, b: Founder) => {
-          const dateA = new Date(a.created_at || 0).getTime();
-          const dateB = new Date(b.created_at || 0).getTime();
-          return dateB - dateA; // Descending order
-        });
-        
-        // Only set Verification to true for first 400 unsent emails, rest should be false
-        // First, identify which founders should be verified and which need updates
-        let verifiedCount = 0;
-        const updatePromises: Promise<Response>[] = [];
-        
-        const foundersWithDefaultVerification = sortedFounders.map((founder: Founder) => {
-          const shouldVerify = founder['Mail Status'] !== 'SENT' && verifiedCount < EMAIL_LIMIT;
-          
-          if (shouldVerify) {
-            verifiedCount++;
-          }
-          
-          // Only update database if the value needs to change
-          if (founder['Verification'] !== shouldVerify) {
-            updatePromises.push(
-              fetch(`/api/founders?id=${founder.id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 'Verification': shouldVerify }),
-              })
-            );
-          }
-          
-          return {
-            ...founder,
-            'Verification': shouldVerify,
-            'Priority based on Reply': founder['Priority based on Reply'] || '-',
-            '1st Follow-Up Sent (5 days)': founder['1st Follow-Up Sent (5 days)'],
-            '2nd Follow-Up Sent (10 days)': founder['2nd Follow-Up Sent (10 days)']
-          };
-        });
-        
-        // Update database for records that changed
-        if (updatePromises.length > 0) {
-          await Promise.all(updatePromises);
-          console.log(`✅ Updated ${updatePromises.length} verification records in database`);
-        }
-        
-        console.log(`✅ Verification limit applied: ${verifiedCount} emails selected out of ${sortedFounders.length} total`);
-        
-        // Calculate total emails already sent (cumulative count)
-        const totalSent = sortedFounders.filter((f: Founder) => f['Mail Status'] === 'SENT').length;
-        setTotalEmailsSent(totalSent);
-        console.log(`📊 Total emails sent (cumulative): ${totalSent} / ${EMAIL_LIMIT} (${EMAIL_LIMIT - totalSent} remaining)`);
-        
-        setFounders(foundersWithDefaultVerification);
-        setLastRefreshTime(new Date());
-        setCurrentPage(1); // Reset to page 1 when data refreshes
-      } else {
-        setError(data.error || 'Failed to fetch founders from Supabase');
-      }
-    } catch (error) {
-      setError('Error fetching founders data from Supabase');
-      console.error('Error fetching founders:', error);
+      const { data: supabaseData, error: supabaseError } = await supabase
+        .from('scraped_data')
+        .select('*');
+
+      if (supabaseError) throw supabaseError;
+
+      // Map Supabase data to Founder interface
+      const mappedFounders: Founder[] = (supabaseData || []).map((item: any) => ({
+        id: item.id,
+        'Founder Name': item.founder_name || item['Founder Name'],
+        'Company Name': item.company_name || item['Company Name'],
+        'Position': item.position || item['Position'],
+        'Founder Email': item.founder_email || item['Founder Email'],
+        'Founder Linkedin': item.founder_linkedin || item['Founder Linkedin'],
+        'Founder Address': item.founder_address || item['Founder Address'],
+        "Company's Industry": item.company_industry || item["Company's Industry"],
+        'Company Website': item.company_website || item['Company Website'],
+        'Company Linkedin': item.company_linkedin || item['Company Linkedin'],
+        'Company Phone': item.company_phone || item['Company Phone'],
+        'Verification': item.is_verified, // Corrected from item.verification
+        'Mail Status': item.mail_status || item['Mail Status'],
+        'Mail Replys': item.mail_replies || item['Mail Replys'], // Corrected from item.mail_replys
+        '5 Min Sent': item.followup_5_sent, // Mapping to available column
+        '10 Min Sent': item.followup_10_sent, // Mapping to available column
+        '1st Follow-Up Sent (5 days)': item.followup_5_sent, // Corrected from item.first_follow_up_sent
+        '2nd Follow-Up Sent (10 days)': item.followup_10_sent, // Corrected from item.second_follow_up_sent
+        'Priority based on Reply': item.reply_priority, // Corrected from item.priority_based_on_reply
+        created_at: item.created_at,
+        ...item // Include all other properties
+      }));
+
+      setFounders(mappedFounders);
+      setLastRefreshTime(new Date());
+      setCurrentPage(1);
+
+      // Extract unique industries
+      const uniqueIndustries = Array.from(new Set(mappedFounders.map(f => f["Company's Industry"]).filter(Boolean) as string[])).sort();
+      setIndustries(uniqueIndustries);
+      setIndustriesLoading(false);
+
+    } catch (error: any) {
+      setError(`Error fetching data: ${error.message}`);
+      console.error('Error:', error);
     } finally {
       setIsLoading(false);
     }
   }, [selectedIndustry]);
 
-  // Fetch industries on component mount
+  // Fetch data on component mount
   useEffect(() => {
-    const fetchIndustries = async () => {
-      setIndustriesLoading(true);
-      try {
-        console.log('🔄 Frontend: Fetching company industries from API...');
-        console.log('🌐 Current window location:', window.location.href);
-        console.log('🔗 Full URL will be:', window.location.origin + '/api/founder-industries');
-        
-        // Fetch industries from founder industries API
-        const response = await fetch('/api/founder-industries', {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          cache: 'no-cache',
-        });
-        
-        console.log('📡 Frontend: API response received:', {
-          status: response.status,
-          statusText: response.statusText,
-          ok: response.ok,
-          headers: Object.fromEntries(response.headers.entries())
-        });
-        
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('❌ Frontend: Response error:', errorText);
-          throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
-        }
-        
-        const data = await response.json();
-        console.log('📦 Frontend: API response data:', data);
-        
-        if (data.success && Array.isArray(data.data)) {
-          setIndustries(data.data);
-          console.log(`✅ Frontend: Loaded ${data.data.length} unique company industries:`, data.data);
-        } else {
-          console.warn('⚠️ Frontend: API returned unsuccessful or non-array data:', data);
-          setIndustries([]);
-        }
-      } catch (error) {
-        console.error('❌ Frontend: Error fetching founder industries:', error);
-        setIndustries([]);
-      } finally {
-        setIndustriesLoading(false);
-      }
-    };
-    fetchIndustries();
-  }, []);
+    refreshData();
+  }, [refreshData]);
 
   // Auto-select next 400 unsent emails after timer expires
   const autoSelectNextBatch = useCallback(() => {
@@ -212,10 +124,10 @@ export default function FoundersTable() {
       f['Mail Status'] !== 'SENT' &&
       (f['Verification'] === false || f['Verification'] === null)
     );
-    
+
     // Select up to 400 unsent founders
     const toSelect = unsentFounders.slice(0, EMAIL_LIMIT);
-    
+
     // Update verification to true for these founders
     setFounders(prevFounders =>
       prevFounders.map(founder => {
@@ -232,28 +144,55 @@ export default function FoundersTable() {
     const loadEmailTimer = async () => {
       const userEmail = user || 'corofy.marketing@gmail.com';
       try {
-        const response = await fetch(`/api/email-timer?userEmail=${encodeURIComponent(userEmail)}`);
-        const data = await response.json();
-        
-        if (data.success && data.timestamp && data.timestamp > 0) {
-          const timestamp = data.timestamp;
+        // Try to load from database first
+        const { data, error } = await supabase
+          .from('email_timer')
+          .select('timestamp')
+          .eq('user_email', userEmail)
+          .single();
+
+        let timestamp = null;
+
+        if (error && error.code !== 'PGRST116') { // PGRST116 is "no rows returned"
+          // If table doesn't exist or other error, try localStorage
+          console.warn('Database timer load failed, checking localStorage:', error.message);
+          const localTimestamp = localStorage.getItem(`email_timer_${userEmail}`);
+          if (localTimestamp) {
+            timestamp = parseInt(localTimestamp, 10);
+          }
+        } else if (data && data.timestamp && data.timestamp > 0) {
+          timestamp = data.timestamp;
+        } else {
+          // No database timer, check localStorage
+          const localTimestamp = localStorage.getItem(`email_timer_${userEmail}`);
+          if (localTimestamp) {
+            timestamp = parseInt(localTimestamp, 10);
+          }
+        }
+
+        if (timestamp && timestamp > 0) {
           setEmailSendTimestamp(timestamp);
-          
+
           const now = Date.now();
           const elapsed = now - timestamp;
           const twentyFourHours = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
-          
+
           if (elapsed < twentyFourHours) {
             const remaining = twentyFourHours - elapsed;
             setTimeRemaining(remaining);
             setCanSendEmails(false);
           } else {
-            // Timer expired, clear timestamp and allow sending
-            await fetch('/api/email-timer', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ userEmail, timestamp: 0 })
-            });
+            // Timer expired, clear from both database and localStorage
+            try {
+              await supabase
+                .from('email_timer')
+                .update({ timestamp: 0 })
+                .eq('user_email', userEmail);
+            } catch (e) {
+              console.warn('Could not clear database timer:', e);
+            }
+            localStorage.removeItem(`email_timer_${userEmail}`);
+
             setEmailSendTimestamp(null);
             setTimeRemaining(null);
             setCanSendEmails(true);
@@ -284,24 +223,25 @@ export default function FoundersTable() {
       const now = Date.now();
       const elapsed = now - emailSendTimestamp;
       const twentyFourHours = 24 * 60 * 60 * 1000;
-      
+
       if (elapsed >= twentyFourHours) {
-        // Timer expired - clear from database
+        // Timer expired - clear from both database and localStorage
         const userEmail = user || 'corofy.marketing@gmail.com';
         try {
-          await fetch('/api/email-timer', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userEmail, timestamp: 0 })
-          });
+          await supabase
+            .from('email_timer')
+            .update({ timestamp: 0 })
+            .eq('user_email', userEmail);
         } catch (error) {
-          console.error('Error clearing email timer:', error);
+          console.warn('Could not clear database timer:', error);
         }
+        localStorage.removeItem(`email_timer_${userEmail}`);
+
         setEmailSendTimestamp(null);
         setTimeRemaining(null);
         setCanSendEmails(true);
         clearInterval(interval);
-        
+
         // Auto-select next 400 unsent emails
         autoSelectNextBatch();
       } else {
@@ -345,17 +285,18 @@ export default function FoundersTable() {
   // Calculate priority based on reply status
   const calculatePriority = (founder: Founder) => {
     // If priority is already set in database and it's not the default "-", use it
-    if (founder['Priority based on Reply'] && 
-        founder['Priority based on Reply'].trim() !== '' && 
-        founder['Priority based on Reply'] !== '-') {
-      return founder['Priority based on Reply'];
+    const priority = founder['Priority based on Reply'];
+    if (priority && typeof priority === 'string' && priority.trim() !== '' && priority !== '-') {
+      return priority;
     }
 
     // Calculate priority based on reply status
-    const hasReplied = founder['Mail Replys'] && 
-      founder['Mail Replys'].trim() !== '' && 
-      founder['Mail Replys'].toLowerCase() !== 'no reply' &&
-      founder['Mail Replys'].toLowerCase() !== 'no_reply';
+    const mailReplys = founder['Mail Replys'];
+    const hasReplied = mailReplys &&
+      typeof mailReplys === 'string' &&
+      mailReplys.trim() !== '' &&
+      mailReplys.toLowerCase() !== 'no reply' &&
+      mailReplys.toLowerCase() !== 'no_reply';
 
     const mailStatus = founder['Mail Status'];
     const followUp5Days = founder['1st Follow-Up Sent (5 days)'];
@@ -381,9 +322,50 @@ export default function FoundersTable() {
     const hours = Math.floor(totalSeconds / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60);
     const seconds = totalSeconds % 60;
-    
+
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   };
+
+
+
+  // Auto-select first 400 unverified emails when data loads
+  useEffect(() => {
+    if (!isLoading && founders.length > 0) {
+      // Get unverified founders (those without verification in DATABASE and mail not sent)
+      // This filters for emails where is_verified is false/null in the database
+      const unverifiedFounders = founders.filter(f =>
+        !f['Verification'] && f['Mail Status'] !== 'SENT'
+      );
+
+      if (unverifiedFounders.length > 0) {
+        // Always select up to 400 from the top
+        const toSelect = unverifiedFounders.slice(0, EMAIL_LIMIT);
+        const idsToSelect = new Set(toSelect.map(f => f.id));
+
+        console.log(`🎯 Auto-selecting exactly ${toSelect.length} unverified emails from top`);
+
+        // Update verification status: 
+        // - Set to true ONLY for the first 400 unverified emails
+        // - Set to false for all other unverified emails (reset any previous UI selections)
+        // - Keep true for emails that are already verified in database
+        setFounders(prevFounders =>
+          prevFounders.map(founder => {
+            // If already verified in database, keep it
+            if (founder['Verification'] === true && founder['Mail Status'] === 'SENT') {
+              return founder;
+            }
+            // If in the top 400 unverified, select it
+            if (idsToSelect.has(founder.id)) {
+              return { ...founder, 'Verification': true };
+            }
+            // Otherwise, unselect it (reset UI state)
+            return { ...founder, 'Verification': false };
+          })
+        );
+      }
+    }
+  }, [isLoading, lastRefreshTime]); // Trigger on data refresh
+
 
   const handleVerificationChange = async (founderId: string, currentValue: boolean | null) => {
     // Don't allow changes if timer is active (emails were sent and waiting for 24 hours)
@@ -400,14 +382,11 @@ export default function FoundersTable() {
     // Get current verified count
     const currentVerifiedCount = founders.filter(f => f['Verification'] === true).length;
     const isChecking = !currentValue; // true if we're checking this box
-    
-    // Calculate remaining emails available
-    const remainingEmails = EMAIL_LIMIT - totalEmailsSent;
-    
-    // If checking a box, enforce remaining limit (not total limit, but remaining)
-    if (isChecking && currentVerifiedCount >= remainingEmails) {
-      setShowLimitToast(true);
-      setTimeout(() => setShowLimitToast(false), 3000);
+
+    // If checking a box, enforce 400 limit
+    if (isChecking && currentVerifiedCount >= EMAIL_LIMIT) {
+      setShowLimitPopup(true);
+      setTimeout(() => setShowLimitPopup(false), 3000);
       return;
     }
 
@@ -426,16 +405,16 @@ export default function FoundersTable() {
   // Filter founders by priority if filter is set
   const filteredFoundersByPriority = tablePriorityFilter
     ? founders.filter(founder => {
-        const priority = founder['Priority based on Reply'];
-        if (tablePriorityFilter === 'High Priority') {
-          return priority === 'High Priority';
-        } else if (tablePriorityFilter === 'Medium Priority') {
-          return priority === 'Medium Priority';
-        } else if (tablePriorityFilter === 'Low Priority') {
-          return priority === 'Low Priority';
-        }
-        return true;
-      })
+      const priority = founder['Priority based on Reply'];
+      if (tablePriorityFilter === 'High Priority') {
+        return priority === 'High Priority';
+      } else if (tablePriorityFilter === 'Medium Priority') {
+        return priority === 'Medium Priority';
+      } else if (tablePriorityFilter === 'Low Priority') {
+        return priority === 'Low Priority';
+      }
+      return true;
+    })
     : founders;
 
   // Pagination logic
@@ -498,32 +477,29 @@ export default function FoundersTable() {
   const confirmDelete = async () => {
     setShowDeleteConfirmPopup(false);
     setIsDeleting(true);
-    
+
     try {
       const idsToDelete = Array.from(selectedLeads);
-      
-      // Delete leads in batches
-      const deletePromises = idsToDelete.map(id =>
-        fetch(`/api/founders?id=${id}`, {
-          method: 'DELETE',
-        })
-      );
 
-      const results = await Promise.all(deletePromises);
-      const failedDeletes = results.filter(r => !r.ok);
+      // Delete from Supabase
+      const { error: deleteError } = await supabase
+        .from('scraped_data')
+        .delete()
+        .in('id', idsToDelete);
 
-      if (failedDeletes.length > 0) {
-        setDeleteMessage(`Failed to delete ${failedDeletes.length} lead(s). Please try again.`);
-        setShowDeleteErrorPopup(true);
-        setTimeout(() => setShowDeleteErrorPopup(false), 5000);
-      } else {
-        setDeleteMessage(`Successfully deleted ${selectedLeads.size} lead(s)`);
-        setShowDeleteSuccessPopup(true);
-        setTimeout(() => setShowDeleteSuccessPopup(false), 3000);
+      if (deleteError) {
+        throw deleteError;
       }
 
-      // Clear selection and refresh data
+      // Show success message
+      setDeleteMessage(`Successfully deleted ${idsToDelete.length} lead${idsToDelete.length !== 1 ? 's' : ''}`);
+      setShowDeleteSuccessPopup(true);
+      setTimeout(() => setShowDeleteSuccessPopup(false), 3000);
+
+      // Clear selection
       setSelectedLeads(new Set());
+
+      // Refresh data to show updated list
       await refreshData();
     } catch (error) {
       console.error('Error deleting leads:', error);
@@ -551,7 +527,7 @@ export default function FoundersTable() {
     try {
       // Get founders that are checked (should be true in database)
       const verifiedFounders = founders.filter(f => f['Verification'] === true);
-      
+
       if (verifiedFounders.length === 0) {
         alert('No founders selected for email');
         setIsSendingEmail(false);
@@ -560,7 +536,7 @@ export default function FoundersTable() {
 
       // Calculate remaining emails available to send
       const remainingEmails = EMAIL_LIMIT - totalEmailsSent;
-      
+
       // Check if this batch would exceed the limit
       if (verifiedFounders.length > remainingEmails) {
         alert(`You can only send ${remainingEmails} more email${remainingEmails !== 1 ? 's' : ''} (${totalEmailsSent} already sent out of ${EMAIL_LIMIT} limit). Please uncheck ${verifiedFounders.length - remainingEmails} email${verifiedFounders.length - remainingEmails !== 1 ? 's' : ''} to continue.`);
@@ -574,103 +550,62 @@ export default function FoundersTable() {
         setIsSendingEmail(false);
         return;
       }
-      
-      // Get founders that are unchecked (should be false in database)
-      const unverifiedFounders = founders.filter(f => f['Verification'] === false || f['Verification'] === null);
 
-      const totalToUpdate = verifiedFounders.length + unverifiedFounders.length;
+      // Update database verification to true for checked founders
+      const verifyPromises = verifiedFounders.map(founder =>
+        supabase
+          .from('scraped_data')
+          .update({ is_verified: true })
+          .eq('id', founder.id)
+      );
 
-      if (totalToUpdate === 0) {
-        alert('No founders to update');
+      // Wait for all database updates to complete
+      const updateResults = await Promise.all(verifyPromises);
+      const failedUpdates = updateResults.filter(r => r.error);
+
+      if (failedUpdates.length > 0) {
+        console.error(`Failed to update ${failedUpdates.length} founder(s) in database`, failedUpdates);
+        alert('Some updates failed. Please try again.');
         setIsSendingEmail(false);
         return;
       }
 
-      // Update database verification to true for checked founders
-      const verifyPromises = verifiedFounders.map(founder =>
-        fetch(`/api/founders?id=${founder.id}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            'Verification': true
-          })
-        })
-      );
-
-      // Update database verification to false for unchecked founders
-      const unverifyPromises = unverifiedFounders.map(founder =>
-        fetch(`/api/founders?id=${founder.id}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            'Verification': false
-          })
-        })
-      );
-
-      // Wait for all database updates to complete
-      const allPromises = [...verifyPromises, ...unverifyPromises];
-      const updateResults = await Promise.all(allPromises);
-      const failedUpdates = updateResults.filter(r => !r.ok);
-
-      if (failedUpdates.length > 0) {
-        console.error(`Failed to update ${failedUpdates.length} founder(s) in database`);
-      }
-
-      // Trigger the webhook after successful database update
-      try {
-        // Build query parameters for GET request
-        const queryParams = new URLSearchParams({
-          message: 'Workflow was started',
-          verifiedFounders: verifiedFounders.length.toString(),
-          unverifiedFounders: unverifiedFounders.length.toString(),
-          totalUpdated: totalToUpdate.toString(),
-          timestamp: new Date().toISOString()
-        });
-        
-        const webhookUrlWithParams = `${WEBHOOK_URL}?${queryParams.toString()}`;
-        console.log('🚀 Triggering webhook:', webhookUrlWithParams);
-        
-        const webhookResponse = await fetch(webhookUrlWithParams, {
-          method: 'GET',
-          headers: {
-            'Accept': 'application/json',
-          }
-        });
-
-        if (webhookResponse.ok) {
-          const responseData = await webhookResponse.json();
-          console.log('✅ Webhook triggered successfully:', responseData);
-        } else {
-          console.error('❌ Webhook failed:', webhookResponse.status, webhookResponse.statusText);
-          const errorText = await webhookResponse.text();
-          console.error('❌ Webhook error details:', errorText);
-        }
-      } catch (webhookError) {
-        console.error('❌ Error triggering webhook:', webhookError);
-      }
+      console.log(`✅ Updated ${verifiedFounders.length} verification records to true in database`);
 
       // Calculate new total after this send
       const newTotalSent = totalEmailsSent + verifiedFounders.length;
-      
+
       // Start 24-hour timer only if we've reached or exceeded the EMAIL_LIMIT (400) emails
       // This is cumulative across all batches
       if (newTotalSent >= EMAIL_LIMIT) {
         const timestamp = Date.now();
         const userEmail = user || 'corofy.marketing@gmail.com';
+
+        // Try to save timer to database, fall back to localStorage if table doesn't exist
         try {
-          await fetch('/api/email-timer', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userEmail, timestamp })
-          });
+          const { error: timerError } = await supabase
+            .from('email_timer')
+            .upsert({
+              user_email: userEmail,
+              timestamp: timestamp,
+              updated_at: new Date().toISOString()
+            }, {
+              onConflict: 'user_email'
+            });
+
+          if (timerError) {
+            console.warn('Database timer save failed, using localStorage:', timerError.message);
+            // Fallback to localStorage
+            localStorage.setItem(`email_timer_${userEmail}`, timestamp.toString());
+          } else {
+            console.log('✅ Timer saved to database');
+          }
         } catch (error) {
-          console.error('Error saving email timer:', error);
+          console.warn('Error saving email timer to database, using localStorage:', error);
+          // Fallback to localStorage
+          localStorage.setItem(`email_timer_${userEmail}`, timestamp.toString());
         }
+
         setEmailSendTimestamp(timestamp);
         setTimeRemaining(24 * 60 * 60 * 1000); // 24 hours in milliseconds
         setCanSendEmails(false);
@@ -680,13 +615,13 @@ export default function FoundersTable() {
         const remaining = EMAIL_LIMIT - newTotalSent;
         console.log(`✅ Sent ${verifiedFounders.length} emails. Total sent: ${newTotalSent} / ${EMAIL_LIMIT} (${remaining} remaining). Timer not started.`);
       }
-      
+
       // Update total emails sent count
       setTotalEmailsSent(newTotalSent);
 
       // Show success popup
       setShowEmailSuccessPopup(true);
-      
+
       // Auto-close popup after 3 seconds
       setTimeout(() => {
         setShowEmailSuccessPopup(false);
@@ -711,7 +646,7 @@ export default function FoundersTable() {
       </div>
 
       <div className="p-6">
-        
+
         {/* Timer and Limit Banner */}
         {!canSendEmails && timeRemaining !== null && (
           <div className="mb-6 bg-orange-50 border-l-4 border-orange-500 p-4 rounded-md">
@@ -738,28 +673,6 @@ export default function FoundersTable() {
           </div>
         )}
 
-        {/* Remaining Emails Counter */}
-        {canSendEmails && (
-          <div className="mb-6 bg-blue-50 border-l-4 border-blue-500 p-4 rounded-md">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <svg className="w-6 h-6 text-blue-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                </svg>
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900">Email Sending Available</h3>
-                  <p className="text-sm text-gray-700 mt-1">
-                    You can send <span className="font-bold text-blue-700">{EMAIL_LIMIT - totalEmailsSent}</span> more email{EMAIL_LIMIT - totalEmailsSent !== 1 ? 's' : ''} ({totalEmailsSent} / {EMAIL_LIMIT} sent)
-                  </p>
-                </div>
-              </div>
-              <div className="text-center bg-white rounded-lg p-3 shadow-sm border border-blue-200">
-                <div className="text-2xl font-bold text-blue-600">{EMAIL_LIMIT - totalEmailsSent}</div>
-                <div className="text-xs text-gray-500 mt-1">Remaining</div>
-              </div>
-            </div>
-          </div>
-        )}
 
 
         {/* Industry Filter and Actions */}
@@ -838,11 +751,11 @@ export default function FoundersTable() {
 
         {/* Founders Table */}
         {!isLoading && !error && (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto shadow-md rounded-lg border border-gray-200">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+              <thead className="bg-gradient-to-r from-slate-50 to-slate-100">
                 <tr>
-                  <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">
                     <input
                       type="checkbox"
                       checked={currentFounders.length > 0 && currentFounders.every(f => selectedLeads.has(f.id))}
@@ -854,7 +767,7 @@ export default function FoundersTable() {
                   <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                     #
                   </th>
-                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                     Founder Name
                   </th>
                   <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -933,7 +846,7 @@ export default function FoundersTable() {
                   </tr>
                 ) : (
                   currentFounders.map((founder, index) => (
-                    <tr key={founder.id} className={`hover:bg-gray-50 ${selectedLeads.has(founder.id) ? 'bg-blue-50' : ''}`}>
+                    <tr key={founder.id} className={`transition-all duration-150 hover:bg-blue-50/50 hover:shadow-sm ${selectedLeads.has(founder.id) ? 'bg-blue-50 border-l-4 border-blue-500' : 'border-l-4 border-transparent'}`}>
                       <td className="px-3 py-4 whitespace-nowrap text-center">
                         <input
                           type="checkbox"
@@ -945,8 +858,8 @@ export default function FoundersTable() {
                       <td className="px-3 py-4 whitespace-nowrap text-center text-sm font-semibold text-gray-700">
                         {startIndex + index + 1}
                       </td>
-                      <td className="px-3 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {founder['Founder Name']}
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {founder['Founder Name'] || '-'}
                       </td>
                       <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900">
                         {founder['Company Name']}
@@ -954,36 +867,39 @@ export default function FoundersTable() {
                       <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900">
                         {founder['Position']}
                       </td>
-                      <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {founder['Founder Email'] ? (
-                          <a href={`mailto:${founder['Founder Email']}`} className="text-blue-600 hover:text-blue-800">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                        {typeof founder['Founder Email'] === 'string' ? (
+                          <a href={`mailto:${founder['Founder Email']}`} className="text-blue-600 hover:text-blue-800 hover:underline font-medium transition-colors">
                             {founder['Founder Email']}
                           </a>
                         ) : (
-                          <span className="text-gray-400">-</span>
+                          <span className="text-gray-400 italic">-</span>
                         )}
                       </td>
-                      <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {founder['Founder Linkedin'] ? (
-                          <a href={founder['Founder Linkedin']} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                        {typeof founder['Founder Linkedin'] === 'string' ? (
+                          <a href={founder['Founder Linkedin']} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 hover:underline font-medium transition-colors">
+                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z" />
+                            </svg>
                             LinkedIn
                           </a>
                         ) : (
-                          <span className="text-gray-400">-</span>
+                          <span className="text-gray-400 italic">-</span>
                         )}
                       </td>
                       <td className="px-3 py-4 text-sm text-gray-900">
-                        <div className="max-w-xs truncate" title={founder['Founder Address'] || ''}>
-                          {founder['Founder Address'] || '-'}
+                        <div className="max-w-xs truncate" title={typeof founder['Founder Address'] === 'string' ? founder['Founder Address'] : ''}>
+                          {typeof founder['Founder Address'] === 'string' ? founder['Founder Address'] : '-'}
                         </div>
                       </td>
                       <td className="px-3 py-4 text-sm text-gray-900">
-                        <div className="max-w-xs truncate" title={founder["Company's Industry"] || ''}>
-                          {founder["Company's Industry"] || '-'}
+                        <div className="max-w-xs truncate" title={typeof founder["Company's Industry"] === 'string' ? founder["Company's Industry"] : ''}>
+                          {typeof founder["Company's Industry"] === 'string' ? founder["Company's Industry"] : '-'}
                         </div>
                       </td>
                       <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {founder['Company Website'] ? (
+                        {typeof founder['Company Website'] === 'string' ? (
                           <a href={founder['Company Website']} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800">
                             Website
                           </a>
@@ -992,7 +908,7 @@ export default function FoundersTable() {
                         )}
                       </td>
                       <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {founder['Company Linkedin'] ? (
+                        {typeof founder['Company Linkedin'] === 'string' ? (
                           <a href={founder['Company Linkedin']} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800">
                             LinkedIn
                           </a>
@@ -1001,121 +917,113 @@ export default function FoundersTable() {
                         )}
                       </td>
                       <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {founder['Company Phone'] || <span className="text-gray-400">-</span>}
+                        {typeof founder['Company Phone'] === 'string' ? founder['Company Phone'] : <span className="text-gray-400">-</span>}
                       </td>
                       <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900">
                         <div className="flex items-center justify-center">
                           <input
                             type="checkbox"
                             checked={founder['Verification'] || false}
-                            onChange={() => handleVerificationChange(founder.id, founder['Verification'])}
-                            disabled={!canSendEmails || founder['Mail Status'] === 'SENT'}
-                            className={`h-5 w-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 ${
-                              !canSendEmails || founder['Mail Status'] === 'SENT'
-                                ? 'cursor-not-allowed opacity-50'
-                                : 'cursor-pointer'
-                            }`}
+                            onChange={() => handleVerificationChange(founder.id, founder['Verification'] || false)}
+                            disabled={
+                              !canSendEmails ||
+                              founder['Mail Status'] === 'SENT' ||
+                              founder['Verification'] === true  // Disable if already verified in database
+                            }
+                            className={`h-5 w-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 ${!canSendEmails || founder['Mail Status'] === 'SENT' || founder['Verification'] === true
+                              ? 'cursor-not-allowed opacity-50'
+                              : 'cursor-pointer'
+                              }`}
                             title={
                               founder['Mail Status'] === 'SENT'
                                 ? 'Mail already sent - cannot modify verification'
-                                : !canSendEmails
-                                ? 'Verification locked - waiting for 24-hour timer'
-                                : founder['Verification']
-                                ? 'Click to unverify'
-                                : 'Click to verify'
+                                : founder['Verification'] === true
+                                  ? 'Already verified in database - cannot uncheck'
+                                  : !canSendEmails
+                                    ? 'Verification locked - waiting for 24-hour timer'
+                                    : founder['Verification']
+                                      ? 'Click to unverify'
+                                      : 'Click to verify'
                             }
                           />
                         </div>
                       </td>
-                      <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
                         {founder['Mail Status'] ? (
-                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                            founder['Mail Status'] === 'SENT' 
-                              ? 'bg-green-100 text-green-800' 
-                              : 'bg-yellow-100 text-yellow-800'
-                          }`}>
+                          <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold shadow-sm ${founder['Mail Status'] === 'SENT'
+                            ? 'bg-gradient-to-r from-green-100 to-green-200 text-green-800 border border-green-300'
+                            : 'bg-gradient-to-r from-yellow-100 to-yellow-200 text-yellow-800 border border-yellow-300'
+                            }`}>
+                            <span className={`w-2 h-2 rounded-full mr-2 ${founder['Mail Status'] === 'SENT' ? 'bg-green-500' : 'bg-yellow-500'
+                              }`}></span>
                             {founder['Mail Status']}
                           </span>
                         ) : (
                           <span className="text-gray-400">-</span>
                         )}
                       </td>
-                      <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
                         {founder['Mail Replys'] ? (
-                          <span className="text-green-600 font-medium">Yes</span>
+                          <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-green-100 to-green-200 text-green-800 border border-green-300 shadow-sm">
+                            <svg className="w-3 h-3 mr-1.5" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                            </svg>
+                            Replied
+                          </span>
                         ) : (
-                          <span className="text-gray-400">-</span>
+                          <span className="text-gray-400 italic">No reply</span>
                         )}
                       </td>
-                      <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
                         {(() => {
                           const followUp5Days = founder['1st Follow-Up Sent (5 days)'];
-                          const isFollowUp5DaysSent = followUp5Days && 
-                            followUp5Days.trim() !== '' && 
+                          const isFollowUp5DaysSent = followUp5Days &&
+                            typeof followUp5Days === 'string' &&
+                            followUp5Days.trim() !== '' &&
                             followUp5Days.toLowerCase() === 'sent';
-                          
+
                           return (
-                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                              isFollowUp5DaysSent 
-                                ? 'bg-green-100 text-green-800' 
-                                : 'bg-gray-100 text-gray-800'
-                            }`}>
+                            <span className={`inline-flex items-center px-2.5 py-1 rounded text-xs font-medium ${isFollowUp5DaysSent
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-gray-100 text-gray-600'
+                              }`}>
                               {isFollowUp5DaysSent ? 'Sent' : 'Not Sent'}
                             </span>
                           );
                         })()}
                       </td>
-                      <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
                         {(() => {
                           const followUp10Days = founder['2nd Follow-Up Sent (10 days)'];
-                          const isFollowUp10DaysSent = followUp10Days && 
-                            followUp10Days.trim() !== '' && 
+                          const isFollowUp10DaysSent = followUp10Days &&
+                            typeof followUp10Days === 'string' &&
+                            followUp10Days.trim() !== '' &&
                             followUp10Days.toLowerCase() === 'sent';
-                          
+
                           return (
-                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                              isFollowUp10DaysSent 
-                                ? 'bg-green-100 text-green-800' 
-                                : 'bg-gray-100 text-gray-800'
-                            }`}>
+                            <span className={`inline-flex items-center px-2.5 py-1 rounded text-xs font-medium ${isFollowUp10DaysSent
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-gray-100 text-gray-600'
+                              }`}>
                               {isFollowUp10DaysSent ? 'Sent' : 'Not Sent'}
                             </span>
                           );
                         })()}
                       </td>
-                      <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
                         {(() => {
-                          const priority = calculatePriority(founder);
-                          
-                          // If priority is null, undefined, or empty, show "-"
-                          if (!priority || priority === null || priority === undefined || priority.trim() === '') {
-                            return <span className="text-gray-400">-</span>;
-                          }
-                          
-                          const hasReplied = founder['Mail Replys'] && 
-                            founder['Mail Replys'].trim() !== '' && 
-                            founder['Mail Replys'].toLowerCase() !== 'no reply' &&
-                            founder['Mail Replys'].toLowerCase() !== 'no_reply';
-                          
-                          let tooltipText = '';
-                          if (priority === 'High') {
-                            tooltipText = hasReplied ? 'High Priority: Has replied to email' : 'High Priority: Set by database';
-                          } else if (priority === 'Low') {
-                            tooltipText = 'Low Priority: No mail sent yet';
-                          }
-                          
+                          const priority = founder['Priority based on Reply'];
+                          const calculatedPriority = calculatePriority(founder);
+                          const displayPriority = calculatedPriority || '-';
+
+                          let priorityColor = 'text-gray-500';
+                          if (displayPriority === 'High' || displayPriority === 'High Priority') priorityColor = 'text-red-600 font-medium';
+                          if (displayPriority === 'Medium' || displayPriority === 'Medium Priority') priorityColor = 'text-yellow-600 font-medium';
+                          if (displayPriority === 'Low' || displayPriority === 'Low Priority') priorityColor = 'text-blue-600 font-medium';
+
                           return (
-                            <span 
-                              className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium cursor-help ${
-                                priority === 'High' 
-                                  ? 'bg-red-100 text-red-800' 
-                                  : priority === 'Low'
-                                  ? 'bg-green-100 text-green-800'
-                                  : 'bg-blue-100 text-blue-800'
-                              }`}
-                              title={tooltipText}
-                            >
-                              {priority}
+                            <span className={priorityColor}>
+                              {typeof displayPriority === 'string' ? displayPriority : '-'}
                             </span>
                           );
                         })()}
@@ -1165,12 +1073,12 @@ export default function FoundersTable() {
                 Showing {startIndex + 1} to {Math.min(endIndex, filteredFoundersByPriority.length)} of {filteredFoundersByPriority.length} founder{filteredFoundersByPriority.length !== 1 ? 's' : ''}
                 {selectedIndustry && ` in ${selectedIndustry} industry`}
               </div>
-              
+
               {/* MUI Pagination */}
               {totalPages > 1 && (
                 <Stack spacing={2}>
-                  <Pagination 
-                    count={totalPages} 
+                  <Pagination
+                    count={totalPages}
                     page={currentPage}
                     onChange={handlePageChange}
                     color="primary"
@@ -1244,7 +1152,7 @@ export default function FoundersTable() {
                   </svg>
                 </div>
               </div>
-              
+
               {/* Message */}
               <div className="flex-1 pt-0.5">
                 <h3 className="text-base font-bold text-gray-900 mb-1">
@@ -1272,7 +1180,7 @@ export default function FoundersTable() {
           </div>
         </div>
       )}
-{/* Limit Toast Notification */}
+      {/* Limit Toast Notification */}
       {showLimitToast && (
         <div className="fixed top-6 left-0 right-0 flex justify-center z-50 px-4">
           <div className="bg-white rounded-xl shadow-2xl p-5 w-full max-w-md border-l-4 border-orange-500 animate-slideDown">
@@ -1285,7 +1193,7 @@ export default function FoundersTable() {
                   </svg>
                 </div>
               </div>
-              
+
               {/* Message */}
               <div className="flex-1 pt-0.5">
                 <h3 className="text-base font-bold text-gray-900 mb-1">
@@ -1327,7 +1235,7 @@ export default function FoundersTable() {
                   </svg>
                 </div>
               </div>
-              
+
               {/* Message */}
               <div className="flex-1 pt-0.5">
                 <h3 className="text-base font-bold text-gray-900 mb-1">
@@ -1336,7 +1244,7 @@ export default function FoundersTable() {
                 <p className="text-sm text-gray-700 leading-relaxed mb-3">
                   You are about to delete <span className="font-semibold text-orange-700">{selectedLeads.size}</span> lead{selectedLeads.size !== 1 ? 's' : ''}. This action cannot be undone.
                 </p>
-                
+
                 {/* Action buttons */}
                 <div className="flex gap-2">
                   <button
@@ -1392,7 +1300,7 @@ export default function FoundersTable() {
                   </svg>
                 </div>
               </div>
-              
+
               {/* Message */}
               <div className="flex-1 pt-0.5">
                 <h3 className="text-base font-bold text-gray-900 mb-1">
@@ -1431,7 +1339,7 @@ export default function FoundersTable() {
                   </svg>
                 </div>
               </div>
-              
+
               {/* Message */}
               <div className="flex-1 pt-0.5">
                 <h3 className="text-base font-bold text-gray-900 mb-1">
@@ -1445,6 +1353,45 @@ export default function FoundersTable() {
               {/* Close button */}
               <button
                 onClick={() => setShowDeleteErrorPopup(false)}
+                className="flex-shrink-0 text-gray-400 hover:text-gray-700 transition-colors ml-2"
+                aria-label="Close notification"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 400 Email Limit Popup */}
+      {showLimitPopup && (
+        <div className="fixed top-6 left-0 right-0 flex justify-center z-50 px-4">
+          <div className="bg-white rounded-xl shadow-2xl p-5 w-full max-w-md border-l-4 border-red-500 animate-slideDown">
+            <div className="flex items-start gap-4">
+              {/* Warning icon */}
+              <div className="flex-shrink-0">
+                <div className="bg-red-100 rounded-full p-2.5">
+                  <svg className="w-7 h-7 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                </div>
+              </div>
+
+              {/* Message */}
+              <div className="flex-1 pt-0.5">
+                <h3 className="text-base font-bold text-gray-900 mb-1">
+                  ⚠️ Email Selection Limit Reached
+                </h3>
+                <p className="text-sm text-gray-700 leading-relaxed">
+                  You can only select <span className="font-semibold text-red-700">400 emails</span> at a time. Please uncheck some emails before selecting more.
+                </p>
+              </div>
+
+              {/* Close button */}
+              <button
+                onClick={() => setShowLimitPopup(false)}
                 className="flex-shrink-0 text-gray-400 hover:text-gray-700 transition-colors ml-2"
                 aria-label="Close notification"
               >

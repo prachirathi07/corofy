@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Product } from '../lib/supabase';
+import { Product, productData } from '../lib/productData';
 import Pagination from '@mui/material/Pagination';
 import Stack from '@mui/material/Stack';
 
@@ -15,35 +15,23 @@ export default function ProductsTable() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
 
-  const refreshData = useCallback(async () => {
+  const refreshData = useCallback(() => {
     setIsLoading(true);
     setError(null);
     try {
-      // Fetch data directly from Supabase via products API
-      const url = selectedIndustry
-        ? `/api/products?industry=${encodeURIComponent(selectedIndustry)}`
-        : '/api/products';
+      // Use local product data
+      let filteredProducts = [...productData];
       
-      const response = await fetch(url);
-      const data = await response.json();
-      
-      if (data.success) {
-        const products = Array.isArray(data.data) ? data.data : [];
-        // Sort by created_at in descending order (newest first)
-        const sortedProducts = products.sort((a: Product, b: Product) => {
-          const dateA = new Date(a.created_at || 0).getTime();
-          const dateB = new Date(b.created_at || 0).getTime();
-          return dateB - dateA; // Descending order
-        });
-        setProducts(sortedProducts);
-        setLastRefreshTime(new Date());
-        setCurrentPage(1); // Reset to page 1 when data refreshes
-      } else {
-        setError(data.error || 'Failed to fetch products from Supabase');
+      if (selectedIndustry) {
+        filteredProducts = filteredProducts.filter(p => p.industry === selectedIndustry);
       }
+      
+      setProducts(filteredProducts);
+      setLastRefreshTime(new Date());
+      setCurrentPage(1); // Reset to page 1 when data refreshes
     } catch (error) {
-      setError('Error fetching products from Supabase');
-      console.error('Error fetching products:', error);
+      setError('Error loading products');
+      console.error('Error loading products:', error);
     } finally {
       setIsLoading(false);
     }
@@ -51,22 +39,14 @@ export default function ProductsTable() {
 
   // Fetch industries on component mount
   useEffect(() => {
-    const fetchIndustries = async () => {
-      try {
-        // Get all products and extract unique industries
-        const response = await fetch('/api/products');
-        const data = await response.json();
-        if (data.success && Array.isArray(data.data)) {
-          const uniqueIndustries = Array.from(new Set(data.data.map((product: Product) => product.industry))) as string[];
-          setIndustries(uniqueIndustries);
-        }
-      } catch (error) {
-        console.error('Error fetching industries from Supabase:', error);
-        // Fallback to empty array
-        setIndustries([]);
-      }
-    };
-    fetchIndustries();
+    try {
+      // Get unique industries from local product data
+      const uniqueIndustries = Array.from(new Set(productData.map((product: Product) => product.industry))) as string[];
+      setIndustries(uniqueIndustries);
+    } catch (error) {
+      console.error('Error loading industries:', error);
+      setIndustries([]);
+    }
   }, []);
 
   // Fetch products when industry changes or component mounts
@@ -88,15 +68,6 @@ export default function ProductsTable() {
     };
   }, [selectedIndustry, refreshData]);
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
 
   // Pagination logic
   const totalPages = Math.ceil(products.length / itemsPerPage);
@@ -115,7 +86,7 @@ export default function ProductsTable() {
       {/* Header */}
       <div className="bg-green-600 text-white p-6 rounded-t-lg">
         <h2 className="text-xl font-bold">Products Database</h2>
-        <p className="text-green-100 mt-1">View all products stored in Supabase</p>
+        <p className="text-green-100 mt-1">View all available products</p>
       </div>
 
       <div className="p-6">
@@ -247,7 +218,7 @@ export default function ProductsTable() {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {product.created_at ? formatDate(product.created_at) : 'N/A'}
+                        N/A
                       </td>
                     </tr>
                   ))

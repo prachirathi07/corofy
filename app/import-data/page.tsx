@@ -103,32 +103,8 @@ export default function ImportDataPage() {
 
     for (const founder of sampleFounders) {
       try {
-        const response = await fetch('/api/founders', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(founder)
-        });
-
-        const data = await response.json();
-
-        if (response.ok && data.success) {
-          importResults.push({
-            name: founder['Founder Name'],
-            company: founder['Company Name'],
-            status: 'success'
-          });
-          successCount++;
-        } else {
-          importResults.push({
-            name: founder['Founder Name'],
-            company: founder['Company Name'],
-            status: 'error',
-            error: data.error || 'Unknown error'
-          });
-          errorCount++;
-        }
+        // Supabase removed - API calls disabled
+        throw new Error('Supabase has been removed. API calls are disabled.');
       } catch (error) {
         importResults.push({
           name: founder['Founder Name'],
@@ -157,7 +133,7 @@ export default function ImportDataPage() {
 
           <div className="mb-6">
             <p className="text-gray-600 mb-4">
-              This page will import sample founders data into your Supabase database.
+              Supabase has been removed. This page is no longer functional.
             </p>
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
               <h3 className="font-semibold text-blue-900 mb-2">What will be imported:</h3>
@@ -245,8 +221,7 @@ export default function ImportDataPage() {
           <div className="mt-8 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
             <h3 className="font-semibold text-yellow-900 mb-2">Note:</h3>
             <p className="text-sm text-yellow-800">
-              Make sure your Supabase &quot;scraped Data&quot; table is set up correctly with all the required columns.
-              If you encounter errors, check the table schema in your Supabase dashboard.
+              Supabase has been removed from this project. This functionality is no longer available.
             </p>
           </div>
         </div>

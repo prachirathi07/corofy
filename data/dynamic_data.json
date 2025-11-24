@@ -1,0 +1,20 @@
+{
+  "industries": [
+    {
+      "name": "dharm",
+      "sicCode": "1234"
+    }
+  ],
+  "brands": {},
+  "chemicals": {},
+  "selectedCountries": [
+    "India",
+    "Pakistan",
+    "China",
+    "Afghanistan",
+    "Albania",
+    "Argentina",
+    "Andorra"
+  ],
+  "lastUpdated": "2025-11-24T05:42:11.764Z"
+}
