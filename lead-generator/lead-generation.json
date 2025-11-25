@@ -1,0 +1,552 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "// Debug code to see what we're working with\nconst parsed = $input.first().json;\n\nconsole.log('Full parsed object:', JSON.stringify(parsed, null, 2));\nconsole.log('Keys available:', Object.keys(parsed));\n\nconsole.log('=== WEBHOOK RECEIVED ===');\nconsole.log('Industry:', parsed.body?.industry);\nconsole.log('SIC Codes:', parsed.body?.sic_codes);\nconsole.log('Countries:', parsed.body?.countries);\n\nreturn [{\n  json: {\n    debug_fullObject: parsed,\n    debug_keys: Object.keys(parsed),\n    debug_targetCountries: parsed.targetCountries,\n    debug_country: parsed.country\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        32,
+        704
+      ],
+      "id": "fc0800ac-5b6e-47f6-b58c-af79f2590de4",
+      "name": "Code4"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "people",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        1136,
+        704
+      ],
+      "id": "754a2490-93ba-47bd-9068-46a71b4aec61",
+      "name": "Split Out2"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d9c43340-d0e3-47c2-86fb-8a9ea45d8bf5",
+              "name": "name",
+              "value": "={{ $('Split Out2').item.json.name }}",
+              "type": "string"
+            },
+            {
+              "id": "686f2035-da7b-45f6-933c-33406d19c5d8",
+              "name": "linkedin_url",
+              "value": "={{ $('Split Out2').item.json.linkedin_url }}",
+              "type": "string"
+            },
+            {
+              "id": "50abef65-7d5d-44c3-b7c4-b994e14c9109",
+              "name": "title",
+              "value": "={{ $('Split Out2').item.json.title }}",
+              "type": "string"
+            },
+            {
+              "id": "1796e848-ea98-47d9-9600-57dceb08ce08",
+              "name": "email",
+              "value": "={{ $json.person.email }}",
+              "type": "string"
+            },
+            {
+              "id": "ac1456c4-150f-458e-818d-548baffe68d7",
+              "name": "formatted_address",
+              "value": "={{ $('Split Out2').item.json.formatted_address }}",
+              "type": "string"
+            },
+            {
+              "id": "09619db0-79e7-4650-b1bf-bdc25b65d8a8",
+              "name": "organization.name",
+              "value": "={{ $('Split Out2').item.json.organization.name }}",
+              "type": "string"
+            },
+            {
+              "id": "b17e2c3e-d9f0-451e-8a9c-128354c25dd8",
+              "name": "=organization.industry",
+              "value": "={{ $('Code5').item.json._industry_filter }}",
+              "type": "string"
+            },
+            {
+              "id": "fcb0d437-8d31-4d70-a8b5-2a8afb3591ff",
+              "name": "organization.website_url",
+              "value": "={{ $('Split Out2').item.json.organization.website_url }}",
+              "type": "string"
+            },
+            {
+              "id": "367aa276-e4c5-4963-93a7-fcfef11c99f1",
+              "name": "organization.linkedin_url",
+              "value": "={{ $('Split Out2').item.json.organization.linkedin_url }}",
+              "type": "string"
+            },
+            {
+              "id": "cc53559d-5db3-4ae4-9a17-91e84a0c21e1",
+              "name": "organization.blog_url",
+              "value": "={{ $('Split Out2').item.json.organization.blog_url }}",
+              "type": "string"
+            },
+            {
+              "id": "0d90a39b-bea8-4173-a785-cb82fcc52762",
+              "name": "organization.angellist_url",
+              "value": "={{ $('Split Out2').item.json.organization.angellist_url }}",
+              "type": "string"
+            },
+            {
+              "id": "f1699d5b-6c7e-4e8c-aa29-ad83a1d69bd4",
+              "name": "organization.phone",
+              "value": "={{ $json.person.organization.phone }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2016,
+        608
+      ],
+      "id": "a447fbeb-9041-4d90-873f-354e99e7cb04",
+      "name": "Edit Fields2"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.apollo.io/api/v1/mixed_people/search",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "reveal_personal_emails",
+              "value": "true"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "=Cache-Control",
+              "value": "no-cache"
+            },
+            {
+              "name": "x-api-key",
+              "value": "HnGvenvZT6bl1pgc91-GoA"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        624,
+        704
+      ],
+      "id": "457d2643-f374-4d66-8f00-f941d65c5dcf",
+      "name": "HTTP Request4",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.apollo.io/api/v1/people/match",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "reveal_personal_emails",
+              "value": "true"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Cache-Control",
+              "value": "no-cache"
+            },
+            {
+              "name": "accept",
+              "value": "application/json"
+            },
+            {
+              "name": "x-api-key",
+              "value": "HnGvenvZT6bl1pgc91-GoA"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"id\": \"{{ $json.id }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1728,
+        688
+      ],
+      "id": "574633d1-2d08-4499-993e-0a929b3a6997",
+      "name": "HTTP Request5",
+      "alwaysOutputData": false,
+      "retryOnFail": false,
+      "notesInFlow": false
+    },
+    {
+      "parameters": {
+        "jsCode": "// Transform webhook data for Apollo API with pagination for 200 leads\nconst parsed = $input.first().json || {};\n\n// Extract data - handle both debug_fullObject and direct body\nconst webhookData = parsed.debug_fullObject?.body || parsed.body || {};\nconst industry = webhookData.industry || \"\";\nconst sicCodes = webhookData.sic_codes || [];\nconst countries = webhookData.countries || [];\n\nconsole.log('=== APOLLO API PAYLOAD BUILDER ===');\nconsole.log('1. Industry selected:', industry);\nconsole.log('2. SIC Codes received:', sicCodes);\nconsole.log('3. Countries received:', countries);\n\n// Calculate how many pages needed for 200 leads\nconst leadsPerPage = 100;  // Apollo max\nconst totalLeadsWanted = 800;\nconst totalPages = Math.ceil(totalLeadsWanted / leadsPerPage);  // 2 pages\n\nconsole.log(`4. Will fetch ${totalPages} pages to get ${totalLeadsWanted} leads`);\n\n// Create array of requests for all pages (1 to 2)\nconst requests = [];\nfor (let page = 1; page <= totalPages; page++) {\n  requests.push({\n    json: {\n      api_key: \"HnGvenvZT6bl1pgc91-GoA\",\n      organization_sic_codes: sicCodes,\n      person_locations: countries,\n      person_titles: [\n        \"CEO\", \"COO\", \"Director\", \"President\", \"Owner\", \"Founder\", \"Board of Directors\"\n      ],\n      reveal_personal_emails: true,\n      email_status: [\"verified\", \"guessed\"],\n      page: page,  // Page 1, then Page 2\n      per_page: leadsPerPage,\n      _industry_filter: industry\n    }\n  });\n}\n\nconsole.log(`5. Created ${requests.length} API requests (Page 1: 100 leads, Page 2: 100 leads)`);\nconsole.log('=== END ===');\n\nreturn requests;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        352,
+        704
+      ],
+      "id": "9331beca-9863-4e36-a482-ae4cfb1ee341",
+      "name": "Code5"
+    },
+    {
+      "parameters": {
+        "tableId": "scraped Data",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "Founder Name",
+              "fieldValue": "={{ $('Edit Fields2').item.json.name }}"
+            },
+            {
+              "fieldId": "Company Name",
+              "fieldValue": "={{ $('Edit Fields2').item.json.organization.name }}"
+            },
+            {
+              "fieldId": "Position",
+              "fieldValue": "={{ $('Edit Fields2').item.json.title }}"
+            },
+            {
+              "fieldId": "Founder Email",
+              "fieldValue": "={{ $('Edit Fields2').item.json.email }}"
+            },
+            {
+              "fieldId": "Founder Linkedin",
+              "fieldValue": "={{ $('Edit Fields2').item.json.linkedin_url }}"
+            },
+            {
+              "fieldId": "Founder Address",
+              "fieldValue": "={{ $('Edit Fields2').item.json.formatted_address }}"
+            },
+            {
+              "fieldId": "Company's Industry",
+              "fieldValue": "={{ $('Edit Fields2').item.json.organization.industry }}"
+            },
+            {
+              "fieldId": "Company Website",
+              "fieldValue": "={{ $('Edit Fields2').item.json.organization.website_url }}"
+            },
+            {
+              "fieldId": "Company Linkedin",
+              "fieldValue": "={{ $('Edit Fields2').item.json.organization.linkedin_url }}"
+            },
+            {
+              "fieldId": "Company Blogpost",
+              "fieldValue": "={{ $('Edit Fields2').item.json.organization.blog_url }}"
+            },
+            {
+              "fieldId": "Company Angellist",
+              "fieldValue": "={{ $('Edit Fields2').item.json.organization.angellist_url }}"
+            },
+            {
+              "fieldId": "Company Phone",
+              "fieldValue": "={{ $('Edit Fields2').item.json.organization.phone }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        2288,
+        704
+      ],
+      "id": "aec6e89b-0a22-4f69-a7d1-f8a888c2d051",
+      "name": "Create a row2",
+      "credentials": {
+        "supabaseApi": {
+          "id": "o3rLq66uVGgi3KGO",
+          "name": "Supabase Corofy"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        1408,
+        704
+      ],
+      "id": "55c4017f-1dc2-4e55-8e39-639e8d64935c",
+      "name": "Loop Over Items3"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "a78c1edf-450b-44b8-9af5-8206b4736b81",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -192,
+        704
+      ],
+      "id": "149f7e90-65a6-48c4-bdf1-c21e5b40683c",
+      "name": "Webhook1",
+      "webhookId": "a78c1edf-450b-44b8-9af5-8206b4736b81"
+    },
+    {
+      "parameters": {
+        "jsCode": "const results = [];\nfor (const item of $input.all()) {\n  const original = item.json;\n  let email = null;\n\n  if (original.email) {\n    email = original.email;\n  } else if (original.person && original.person.email) {\n    email = original.person.email;\n  } else if (Array.isArray(original.emails) && original.emails.length > 0) {\n    email = original.emails[0];\n  } else if (original.personal_email) {\n    email = original.personal_email;\n  }\n\n  results.push({\n    json: {\n      ...original,\n      extracted_email: email\n    }\n  });\n}\nreturn results;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        912,
+        704
+      ],
+      "id": "c0be967b-0c56-4972-bf92-8ece1493742b",
+      "name": "Code"
+    }
+  ],
+  "connections": {
+    "Code4": {
+      "main": [
+        [
+          {
+            "node": "Code5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out2": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields2": {
+      "main": [
+        [
+          {
+            "node": "Create a row2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request4": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request5": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code5": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a row2": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items3": {
+      "main": [
+        [],
+        [
+          {
+            "node": "HTTP Request5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook1": {
+      "main": [
+        [
+          {
+            "node": "Code4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Split Out2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {
+    "Webhook1": [
+      {
+        "headers": {
+          "host": "n8n.srv963601.hstgr.cloud",
+          "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36",
+          "content-length": "712",
+          "accept": "*/*",
+          "accept-encoding": "gzip, deflate, br, zstd",
+          "accept-language": "en-US,en;q=0.9",
+          "content-type": "application/json",
+          "origin": "https://corofy-dashboard1.vercel.app",
+          "priority": "u=1, i",
+          "referer": "https://corofy-dashboard1.vercel.app/",
+          "sec-ch-ua": "\"Google Chrome\";v=\"141\", \"Not?A_Brand\";v=\"8\", \"Chromium\";v=\"141\"",
+          "sec-ch-ua-mobile": "?0",
+          "sec-ch-ua-platform": "\"Windows\"",
+          "sec-fetch-dest": "empty",
+          "sec-fetch-mode": "cors",
+          "sec-fetch-site": "cross-site",
+          "x-forwarded-for": "172.18.0.1",
+          "x-forwarded-host": "n8n.srv963601.hstgr.cloud",
+          "x-forwarded-port": "443",
+          "x-forwarded-proto": "https",
+          "x-forwarded-server": "88816d819947",
+          "x-real-ip": "172.18.0.1"
+        },
+        "params": {},
+        "query": {},
+        "body": {
+          "industry": "Oil & Gas",
+          "brandName": "MEA",
+          "chemicalName": "Mono Ethanol Amine",
+          "countries": [
+            "UAE",
+            "USA",
+            "Australia",
+            "Iraq",
+            "Oman",
+            "Kuwait",
+            "Saudi Arabia",
+            "Egypt",
+            "Azerbaijan",
+            "Kazakhstan",
+            "Vietnam",
+            "Malaysia",
+            "Indonesia",
+            "Nigeria",
+            "Angola",
+            "Algeria",
+            "Libya",
+            "Bolivia",
+            "Guyana",
+            "Mexico",
+            "Pakistan"
+          ],
+          "sic_codes": [
+            "1311"
+          ],
+          "product": {
+            "id": "32",
+            "industry": "Oil & Gas",
+            "brandName": "MEA",
+            "chemicalName": "Mono Ethanol Amine",
+            "application": "Gas Sweetening",
+            "targetCountries": [
+              "UAE",
+              "USA",
+              "Australia",
+              "Iraq",
+              "Oman",
+              "Kuwait",
+              "Saudi Arabia",
+              "Egypt",
+              "Azerbaijan",
+              "Kazakhstan",
+              "Vietnam",
+              "Malaysia",
+              "Indonesia",
+              "Nigeria",
+              "Angola",
+              "Algeria",
+              "Libya",
+              "Bolivia",
+              "Guyana",
+              "Mexico",
+              "Pakistan"
+            ]
+          },
+          "timestamp": "2025-10-21T13:41:37.761Z"
+        },
+        "webhookUrl": "REPLACE_WITH_YOUR_N8N_WEBHOOK_URL",
+        "executionMode": "production"
+      }
+    ]
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "10e4e6c1eea9300223cd6b73408d4f00c50de7b03f854dae5b15fcc57988166b"
+  }
+}
