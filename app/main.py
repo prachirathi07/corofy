@@ -48,9 +48,25 @@ app.add_exception_handler(BaseAPIException, base_api_exception_handler)
 app.add_exception_handler(Exception, general_exception_handler)
 
 # CORS middleware
+# Allow frontend origins (development and production)
+allowed_origins = [
+    "http://localhost:3000",  # Next.js default dev port
+    "http://localhost:3001",  # Alternative dev port
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:3001",
+    # Add production frontend URL here when deploying
+    # "https://your-frontend-domain.com",
+]
+
+# In development, allow all origins for easier testing
+# In production, use the specific origins above
+import os
+if os.getenv("ENVIRONMENT", "development") == "development":
+    allowed_origins = ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure properly for production
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -228,17 +228,26 @@ class ApolloService:
                 
                 logger.info(f"Apollo Search: Page {page}/{total_pages} (Requesting {current_per_page} leads)")
 
+                # Build payload - SIC codes are PRIMARY filter
                 payload = {
                     "page": page,
                     "per_page": current_per_page,
                     "person_titles": c_suites,
                     "person_locations": countries or [],
-                    "organization_sic_codes": sic_codes or [],
                     "organization_num_employees_ranges": self._get_employee_size_ranges(employee_size_min, employee_size_max),
                     "email_status": ["verified"], # User requested ONLY verified emails
-                    "_industry_filter": industry,
                     "reveal_personal_emails": True, # Added per n8n config
                 }
+                
+                # CRITICAL: Only add organization_sic_codes if provided - this is the PRIMARY filter
+                if sic_codes and len(sic_codes) > 0:
+                    payload["organization_sic_codes"] = sic_codes
+                    logger.info(f"🔍 Apollo Search Page {page}: Filtering by SIC codes: {sic_codes}")
+                else:
+                    logger.warning(f"⚠️ Apollo Search Page {page}: No SIC codes provided! Results may not be filtered correctly.")
+                
+                # Remove _industry_filter - it's not a valid Apollo API parameter and may interfere with SIC code filtering
+                # Industry filtering should be done via SIC codes only
 
                 headers = {
                     "accept": "application/json",
@@ -248,6 +257,8 @@ class ApolloService:
 
                 # CORRECT ENDPOINT: /mixed_people/api_search
                 url = f"{self.BASE_URL}/mixed_people/api_search"
+                
+                logger.debug(f"📤 Apollo API Payload Page {page}: {payload}")
 
                 async with httpx.AsyncClient(timeout=60.0) as client:
                     response = await client.post(
@@ -266,6 +277,20 @@ class ApolloService:
                 data = response.json()
                 people = data.get("people", [])
                 logger.info(f"Apollo Search: Page {page} returned {len(people)} leads")
+                
+                # VALIDATION: Filter results to ensure they match SIC codes
+                if sic_codes and len(sic_codes) > 0:
+                    filtered_people = []
+                    for person in people:
+                        org = person.get("organization", {})
+                        org_sic_codes = org.get("sic_codes", [])
+                        # Check if organization has any of the requested SIC codes
+                        if org_sic_codes and any(str(sic) in [str(s) for s in org_sic_codes] for sic in sic_codes):
+                            filtered_people.append(person)
+                        else:
+                            logger.warning(f"⚠️ Filtered out lead {person.get('name', 'Unknown')} - Organization SIC codes {org_sic_codes} don't match requested {sic_codes}")
+                    people = filtered_people
+                    logger.info(f"✅ After SIC code validation: {len(people)} leads match SIC codes {sic_codes}")
 
                 all_people.extend(people)
 
@@ -322,12 +347,14 @@ class ApolloService:
             "position": person.get("title"),
             "founder_address": person.get("formatted_address") or org.get("primary_location", {}).get("formatted_address"),
             "company_name": org.get("name"),
-```python
-        except Exception as e:
-            logger.error(f"❌ Enrichment error for {person_data.get('name', 'Unknown')}: {e}")
-            if 'payload' in locals():
-                logger.error(f"Payload was: {payload}")
-            return None
+            "company_website": company_website,
+            "company_domain": company_domain,
+            "company_linkedin": org.get("linkedin_url"),
+            "company_industry": org.get("industry") or person.get("industry"),
+            "company_country": org.get("primary_location", {}).get("country"),
+            "mail_status": "pending", # Default status for new leads
+            "is_verified": True # We filter for verified emails only
+        }
     
     async def search_people(
         self,
@@ -424,17 +451,26 @@ class ApolloService:
                 
                 logger.info(f"Apollo Search: Page {page}/{total_pages} (Requesting {current_per_page} leads)")
 
+                # Build payload - SIC codes are PRIMARY filter
                 payload = {
                     "page": page,
                     "per_page": current_per_page,
                     "person_titles": c_suites,
                     "person_locations": countries or [],
-                    "organization_sic_codes": sic_codes or [],
                     "organization_num_employees_ranges": self._get_employee_size_ranges(employee_size_min, employee_size_max),
                     "email_status": ["verified"], # User requested ONLY verified emails
-                    "_industry_filter": industry,
                     "reveal_personal_emails": True, # Added per n8n config
                 }
+                
+                # CRITICAL: Only add organization_sic_codes if provided - this is the PRIMARY filter
+                if sic_codes and len(sic_codes) > 0:
+                    payload["organization_sic_codes"] = sic_codes
+                    logger.info(f"🔍 Apollo Search Page {page}: Filtering by SIC codes: {sic_codes}")
+                else:
+                    logger.warning(f"⚠️ Apollo Search Page {page}: No SIC codes provided! Results may not be filtered correctly.")
+                
+                # Remove _industry_filter - it's not a valid Apollo API parameter and may interfere with SIC code filtering
+                # Industry filtering should be done via SIC codes only
 
                 headers = {
                     "accept": "application/json",
@@ -444,6 +480,8 @@ class ApolloService:
 
                 # CORRECT ENDPOINT: /mixed_people/api_search
                 url = f"{self.BASE_URL}/mixed_people/api_search"
+                
+                logger.debug(f"📤 Apollo API Payload Page {page}: {payload}")
 
                 async with httpx.AsyncClient(timeout=60.0) as client:
                     response = await client.post(
@@ -462,6 +500,20 @@ class ApolloService:
                 data = response.json()
                 people = data.get("people", [])
                 logger.info(f"Apollo Search: Page {page} returned {len(people)} leads")
+                
+                # VALIDATION: Filter results to ensure they match SIC codes
+                if sic_codes and len(sic_codes) > 0:
+                    filtered_people = []
+                    for person in people:
+                        org = person.get("organization", {})
+                        org_sic_codes = org.get("sic_codes", [])
+                        # Check if organization has any of the requested SIC codes
+                        if org_sic_codes and any(str(sic) in [str(s) for s in org_sic_codes] for sic in sic_codes):
+                            filtered_people.append(person)
+                        else:
+                            logger.warning(f"⚠️ Filtered out lead {person.get('name', 'Unknown')} - Organization SIC codes {org_sic_codes} don't match requested {sic_codes}")
+                    people = filtered_people
+                    logger.info(f"✅ After SIC code validation: {len(people)} leads match SIC codes {sic_codes}")
 
                 all_people.extend(people)
 
@@ -521,10 +573,8 @@ class ApolloService:
             "company_website": company_website,
             "company_domain": company_domain,
             "company_linkedin": org.get("linkedin_url"),
-            "company_phone": phone,
             "company_industry": org.get("industry") or person.get("industry"),
             "company_country": org.get("primary_location", {}).get("country"),
             "mail_status": "pending", # Default status for new leads
             "is_verified": True # We filter for verified emails only
         }
-```

@@ -81,11 +81,11 @@ async def _send_emails_to_leads(lead_ids: List[str], db: Client):
                     company_domain = company_website.replace("https://", "").replace("http://", "").split("/")[0]
                 company_country = lead.get("company_country")
                 
-                # Step 1: Check timezone
+                # Step 1: Check timezone (Mon-Sat, 9 AM - 6 PM)
                 timezone_check = timezone_service.check_lead_business_hours(
                     country=company_country,
                     start_hour=9,
-                    end_hour=19
+                    end_hour=18  # 6 PM
                 )
                 
                 is_business_hours = timezone_check.get("is_business_hours", False)
@@ -204,7 +204,7 @@ class ScrapeLeadsRequest(BaseModel):
     sic_codes: Opt[List[str]] = None
     c_suites: Opt[List[str]] = None
     industry: Opt[str] = None
-    total_leads_wanted: int = 625
+    total_leads_wanted: int = 10
     source: str = "apollo"
 
 class SendEmailsRequest(BaseModel):
@@ -239,6 +239,13 @@ async def scrape_leads(request: ScrapeLeadsRequest, db: Client = Depends(get_db)
             )
         raise HTTPException(status_code=500, detail=f"Database error: {error_msg}")
     
+    logger.info(f"📥 Received scrape request. Total leads wanted: {request.total_leads_wanted}")
+    
+    # SAFETY OVERRIDE: Enforce max 10 leads for testing
+    if request.total_leads_wanted > 10:
+        logger.warning(f"⚠️ Request asked for {request.total_leads_wanted} leads. OVERRIDING to 10 for safety.")
+        request.total_leads_wanted = 10
+
     try:
         scraper = LeadScraperFactory.create_scraper(source)
         
@@ -262,10 +269,10 @@ async def scrape_leads(request: ScrapeLeadsRequest, db: Client = Depends(get_db)
         allowed_fields = {
             "founder_name", "company_name", "position", "founder_email", "founder_linkedin",
             "founder_address", "company_industry", "company_website", "company_linkedin",
-            "company_blogpost", "company_angellist", "company_phone", "company_country", "company_domain",
+            "company_country", "company_domain",
             "is_verified", "followup_5_sent", "followup_10_sent", "mail_status", "reply_priority",
-            "thread_id", "mail_replies", "email_content", "email_subject",
-            "wait_initial_email", "wait_followup_5", "wait_followup_10", "apollo_search_id"
+            "gmail_thread_id", "mail_replies", "email_content", "email_subject",
+            "apollo_search_id"
         }
         
         leads_to_insert = []

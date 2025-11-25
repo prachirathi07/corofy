@@ -92,12 +92,12 @@ class TimezoneService:
     
     def is_business_hours(self, timezone: str, start_hour: int = 9, end_hour: int = 19) -> Dict[str, Any]:
         """
-        Check if current time is within business hours (Mon-Fri, 9 AM - 7 PM)
+        Check if current time is within business hours (Mon-Sat, 9 AM - 6 PM)
         
         Args:
             timezone: Timezone string (e.g., "Asia/Kolkata", "America/New_York")
             start_hour: Business hours start (default: 9)
-            end_hour: Business hours end (default: 19, which is 7 PM)
+            end_hour: Business hours end (default: 19, which is 7 PM - but user wants 6 PM = 18)
         
         Returns:
             Dict with:
@@ -114,22 +114,24 @@ class TimezoneService:
             day_of_week = now.weekday()  # 0=Monday, 6=Sunday
             day_names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
             
-            # Check if it's a weekday (Monday=0 to Friday=4)
-            is_weekday = day_of_week < 5
+            # Check if it's Mon-Sat (Monday=0 to Saturday=5, exclude Sunday=6)
+            is_business_day = day_of_week < 6  # Mon-Sat (0-5), exclude Sunday (6)
             
-            # Check if it's within business hours
-            is_within_hours = start_hour <= current_hour < end_hour
+            # Check if it's within business hours (9 AM to 6 PM)
+            # User specified 9-6, so end_hour should be 18 (6 PM)
+            effective_end_hour = 18 if end_hour >= 18 else end_hour
+            is_within_hours = start_hour <= current_hour < effective_end_hour
             
-            is_business_time = is_weekday and is_within_hours
+            is_business_time = is_business_day and is_within_hours
             
             reason = None
             if not is_business_time:
-                if not is_weekday:
-                    reason = f"It's {day_names[day_of_week]} (weekend)"
+                if day_of_week == 6:  # Sunday
+                    reason = f"It's {day_names[day_of_week]} (not a business day)"
                 elif current_hour < start_hour:
                     reason = f"Too early ({current_hour}:00 < {start_hour}:00)"
-                elif current_hour >= end_hour:
-                    reason = f"Too late ({current_hour}:00 >= {end_hour}:00)"
+                elif current_hour >= effective_end_hour:
+                    reason = f"Too late ({current_hour}:00 >= {effective_end_hour}:00)"
             
             return {
                 "is_business_hours": is_business_time,
@@ -138,7 +140,7 @@ class TimezoneService:
                 "day_of_week": day_of_week,
                 "day_name": day_names[day_of_week],
                 "current_hour": current_hour,
-                "is_weekday": is_weekday,
+                "is_weekday": is_business_day,  # Updated to reflect Mon-Sat
                 "reason": reason
             }
         
@@ -153,18 +155,18 @@ class TimezoneService:
                 "day_of_week": now.weekday(),
                 "day_name": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"][now.weekday()],
                 "current_hour": now.hour,
-                "is_weekday": now.weekday() < 5,
+                "is_weekday": now.weekday() < 6,  # Mon-Sat
                 "reason": f"Error checking timezone: {str(e)}"
             }
     
-    def check_lead_business_hours(self, country: Optional[str], start_hour: int = 9, end_hour: int = 19) -> Dict[str, Any]:
+    def check_lead_business_hours(self, country: Optional[str], start_hour: int = 9, end_hour: int = 18) -> Dict[str, Any]:
         """
         Check if it's business hours for a lead based on their country
         
         Args:
             country: Lead's country
             start_hour: Business hours start (default: 9)
-            end_hour: Business hours end (default: 19, which is 7 PM)
+            end_hour: Business hours end (default: 18, which is 6 PM - Mon-Sat 9-6)
         
         Returns:
             Dict with business hours check result

@@ -43,6 +43,25 @@ class EmailSendingService:
             # TEST EMAIL OVERRIDE
             lead_email = "prachirathi0712@gmail.com"
 
+            # Get gmail_thread_id and gmail_message_id for follow-ups (to reply in same thread)
+            gmail_thread_id = None
+            gmail_message_id = None
+            if email_type.startswith("followup_"):
+                gmail_thread_id = lead.get("gmail_thread_id")
+                gmail_message_id = lead.get("gmail_message_id")
+                logger.info(f"🔍 Follow-up email: Checking for gmail_thread_id and message_id for lead {lead_id}")
+                logger.info(f"   Email type: {email_type}")
+                logger.info(f"   Retrieved gmail_thread_id: {gmail_thread_id}")
+                logger.info(f"   Retrieved gmail_message_id: {gmail_message_id}")
+                if not gmail_thread_id:
+                    logger.warning(f"⚠️ Follow-up email requested for lead {lead_id} but no gmail_thread_id found. Will create new thread.")
+                else:
+                    logger.info(f"✅ Found gmail_thread_id {gmail_thread_id} for follow-up email")
+                if not gmail_message_id:
+                    logger.warning(f"⚠️ Follow-up email requested for lead {lead_id} but no gmail_message_id found.")
+                else:
+                    logger.info(f"✅ Found gmail_message_id {gmail_message_id} for follow-up email")
+
             # Generate email content
             email_content = await self.email_personalization_service.generate_email_for_lead(
                 lead_id=lead_id,
@@ -65,7 +84,9 @@ class EmailSendingService:
                 body=body,
                 email_type=email_type,
                 is_personalized=is_personalized,
-                company_website_used=company_website_used
+                company_website_used=company_website_used,
+                gmail_thread_id=gmail_thread_id,  # Pass gmail_thread_id for follow-ups
+                gmail_message_id=gmail_message_id  # Pass gmail_message_id for follow-ups
             )
 
         except Exception as e:
@@ -81,7 +102,9 @@ class EmailSendingService:
         body: str,
         email_type: str,
         is_personalized: bool = False,
-        company_website_used: bool = False
+        company_website_used: bool = False,
+        gmail_thread_id: Optional[str] = None,
+        gmail_message_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Send email via n8n webhook
@@ -100,7 +123,9 @@ class EmailSendingService:
                 subject=subject,
                 body=body,
                 lead_id=lead_id,
-                email_type=email_type
+                email_type=email_type,
+                gmail_thread_id=gmail_thread_id,  # Pass gmail_thread_id for follow-ups
+                gmail_message_id=gmail_message_id  # Pass gmail_message_id for follow-ups
             )
             logger.info(f"🔄 Webhook service returned: {webhook_result}")
 
@@ -117,8 +142,18 @@ class EmailSendingService:
 
             # Update lead status only if email was successfully sent
             if email_sent:
+                # Set mail_status based on email_type
+                if email_type == "initial":
+                    status_value = "email_sent"
+                elif email_type == "followup_5day":
+                    status_value = "followup_5day_sent"
+                elif email_type == "followup_10day":
+                    status_value = "followup_10day_sent"
+                else:
+                    status_value = "email_sent"  # Default fallback
+                
                 update_data = {
-                    "mail_status": "email_sent",
+                    "mail_status": status_value,
                     "sent_at": sent_at_time,
                     "is_personalized": is_personalized,
                     "company_website_used": company_website_used
@@ -128,11 +163,25 @@ class EmailSendingService:
                 if webhook_response and isinstance(webhook_response, dict):
                     if webhook_response.get("message_id"):
                         update_data["gmail_message_id"] = webhook_response.get("message_id")
-                    if webhook_response.get("thread_id"):
-                        update_data["gmail_thread_id"] = webhook_response.get("thread_id")
+                    if webhook_response.get("gmail_thread_id") or webhook_response.get("thread_id"):
+                        update_data["gmail_thread_id"] = webhook_response.get("gmail_thread_id") or webhook_response.get("thread_id")
                 
                 self.db.table("scraped_data").update(update_data).eq("id", lead_id).execute()
-                logger.info(f"✅ Email sent successfully via webhook to {lead_email} (Lead: {lead_id}) - Status: SENT")
+                logger.info(f"✅ Email sent successfully via webhook to {lead_email} (Lead: {lead_id}) - Status: {status_value}")
+                
+                # Schedule follow-ups for initial emails only (not for follow-ups themselves)
+                if email_type == "initial":
+                    try:
+                        from app.services.followup_service import FollowUpService
+                        followup_service = FollowUpService()
+                        sent_at_dt = datetime.fromisoformat(sent_at_time.replace('Z', '+00:00'))
+                        followup_result = followup_service.schedule_followups_for_lead(lead_id, sent_at_dt)
+                        if followup_result.get("success"):
+                            logger.info(f"📅 Follow-ups scheduled for lead {lead_id}: 5-day and 10-day")
+                        else:
+                            logger.warning(f"⚠️ Failed to schedule follow-ups for lead {lead_id}: {followup_result.get('error')}")
+                    except Exception as e:
+                        logger.error(f"Error scheduling follow-ups for lead {lead_id}: {e}", exc_info=True)
             else:
                 logger.warning(f"❌ Email sending failed via webhook for {lead_email} (Lead: {lead_id}): {webhook_result.get('error')} - No record created")
                 # Add to DLQ if failed
@@ -177,25 +226,43 @@ class EmailSendingService:
 
             lead = lead_result.data[0]
             
-            # Calculate next business hours time (next weekday 9 AM in lead's timezone)
+            # Calculate next business hours time (Mon-Sat, 9 AM - 6 PM in lead's timezone)
             timezone = self.timezone_service.get_timezone_for_country(company_country)
             tz = pytz.timezone(timezone)
             now = datetime.now(tz)
             
-            # Find next business hours (Mon-Fri 9 AM)
+            # Business hours: Mon-Sat (0-5), 9 AM - 6 PM
+            # Find next available business hours slot
             days_ahead = 0
-            if now.weekday() >= 5:  # Saturday or Sunday
-                days_ahead = 7 - now.weekday()  # Days until Monday
-            elif now.hour >= 19:  # After 7 PM, schedule for next day
+            scheduled_time = now.replace(second=0, microsecond=0)
+            
+            # If it's Sunday (6), move to Monday
+            if now.weekday() == 6:  # Sunday
                 days_ahead = 1
+                scheduled_time = (now + timedelta(days=days_ahead)).replace(hour=9, minute=0, second=0, microsecond=0)
+            # If it's Saturday (5) and after 6 PM, move to Monday
+            elif now.weekday() == 5 and now.hour >= 18:  # Saturday after 6 PM
+                days_ahead = 2  # Skip Sunday, go to Monday
+                scheduled_time = (now + timedelta(days=days_ahead)).replace(hour=9, minute=0, second=0, microsecond=0)
+            # If it's a weekday (Mon-Fri) and after 6 PM, schedule for next day at 9 AM
+            elif now.weekday() < 5 and now.hour >= 18:  # Weekday after 6 PM
+                days_ahead = 1
+                scheduled_time = (now + timedelta(days=days_ahead)).replace(hour=9, minute=0, second=0, microsecond=0)
+            # If it's before 9 AM on a business day, schedule for 9 AM today
+            elif now.weekday() < 6 and now.hour < 9:  # Business day before 9 AM
+                scheduled_time = now.replace(hour=9, minute=0, second=0, microsecond=0)
+            # If it's currently in business hours, schedule for next hour (or could send immediately, but we're queueing)
+            else:
+                # Schedule for next hour to give some buffer
+                scheduled_time = (now + timedelta(hours=1)).replace(minute=0, second=0, microsecond=0)
+                # If next hour is after 6 PM, schedule for next day at 9 AM
+                if scheduled_time.hour >= 18:
+                    days_ahead = 1
+                    scheduled_time = (now + timedelta(days=days_ahead)).replace(hour=9, minute=0, second=0, microsecond=0)
             
-            # Calculate scheduled time
-            scheduled_time = (now + timedelta(days=days_ahead))
-            scheduled_time = scheduled_time.replace(hour=9, minute=0, second=0, microsecond=0)
-            
-            # If it's a weekend, move to Monday
-            if scheduled_time.weekday() >= 5:
-                days_until_monday = 7 - scheduled_time.weekday()
+            # Ensure we don't schedule on Sunday
+            if scheduled_time.weekday() == 6:  # Sunday
+                days_until_monday = 1
                 scheduled_time = (scheduled_time + timedelta(days=days_until_monday)).replace(hour=9, minute=0, second=0, microsecond=0)
             
             # Ensure timezone is preserved
@@ -288,11 +355,13 @@ class EmailSendingService:
                     day_of_week = now_local.weekday()
                     current_hour = now_local.hour
                     
-                    is_weekday = day_of_week < 5
-                    is_business_hours = is_weekday and 9 <= current_hour < 19
+                    # Mon-Sat (0-5), exclude Sunday (6)
+                    is_business_day = day_of_week < 6
+                    # Business hours: 9 AM to 6 PM
+                    is_business_hours = is_business_day and 9 <= current_hour < 18
                     
                     if not is_business_hours:
-                        reason = "weekend" if not is_weekday else f"outside hours ({current_hour}:00)"
+                        reason = "Sunday" if day_of_week == 6 else f"outside hours ({current_hour}:00)"
                         logger.info(f"⏸️ Email for {lead_id} - Not in business hours: {reason} ({timezone})")
                         skipped += 1
                         continue
@@ -348,8 +417,8 @@ class EmailSendingService:
                         
                         if webhook_response.get("message_id"):
                             update_data["gmail_message_id"] = webhook_response.get("message_id")
-                        if webhook_response.get("thread_id"):
-                            update_data["gmail_thread_id"] = webhook_response.get("thread_id")
+                        if webhook_response.get("gmail_thread_id") or webhook_response.get("thread_id"):
+                            update_data["gmail_thread_id"] = webhook_response.get("gmail_thread_id") or webhook_response.get("thread_id")
                             
                         self.db.table("scraped_data").update(update_data).eq("id", lead_id).execute()
                         

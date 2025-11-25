@@ -85,10 +85,10 @@ class SimplifiedEmailTrackingService:
                 .select("*") \
                 .eq("is_verified", True) \
                 .is_("email_processed", "null") \
-                .neq("status", "processing") \
+                .neq("mail_status", "processing") \
                 .not_.is_("founder_email", "null") \
                 .neq("founder_email", "") \
-                .not_.in_("mail_status", ["email_sent", "reply_received", "2nd followup sent"]) \
+                .not_.in_("mail_status", ["email_sent", "reply_received", "followup_10day_sent", "processing"]) \
                 .limit(self.batch_size) \
                 .execute()
             
@@ -98,19 +98,19 @@ class SimplifiedEmailTrackingService:
                     .select("*") \
                     .eq("is_verified", True) \
                     .eq("email_processed", False) \
-                    .neq("status", "processing") \
+                    .neq("mail_status", "processing") \
                     .not_.is_("founder_email", "null") \
                     .neq("founder_email", "") \
-                    .not_.in_("mail_status", ["email_sent", "reply_received", "2nd followup sent"]) \
+                    .not_.in_("mail_status", ["email_sent", "reply_received", "followup_10day_sent", "processing"]) \
                     .limit(self.batch_size) \
                     .execute()
             
             leads = result.data if result.data else []
             
             if leads:
-                # LOCK LEADS IMMEDIATELY
+                # LOCK LEADS IMMEDIATELY - Use mail_status instead of status
                 lead_ids = [l["id"] for l in leads]
-                self.db.table("scraped_data").update({"status": "processing"}).in_("id", lead_ids).execute()
+                self.db.table("scraped_data").update({"mail_status": "processing"}).in_("id", lead_ids).execute()
                 logger.info(f"🔒 Locked {len(leads)} verified, unsent leads for processing")
             else:
                 logger.info("📭 No verified, unsent leads found")

@@ -7,6 +7,8 @@ from apscheduler.triggers.interval import IntervalTrigger
 from app.core.database import get_db
 from app.services.email_sending_service import EmailSendingService
 from app.services.dead_letter_queue_service import DeadLetterQueueService
+from app.services.reply_service import ReplyService
+from app.services.followup_service import FollowUpService
 from app.core.rate_limiter import rate_limiter
 import logging
 import asyncio
@@ -49,6 +51,24 @@ class SchedulerService:
             trigger=IntervalTrigger(minutes=10),
             id="cleanup_rate_limiter",
             name="Cleanup Rate Limiter",
+            replace_existing=True
+        )
+        
+        # Job 4: Check for Email Replies (Every 2 hours)
+        self.scheduler.add_job(
+            self._run_check_replies,
+            trigger=IntervalTrigger(hours=2),
+            id="check_replies",
+            name="Check Email Replies",
+            replace_existing=True
+        )
+        
+        # Job 5: Process Due Follow-ups (Every 2 hours)
+        self.scheduler.add_job(
+            self._run_process_followups,
+            trigger=IntervalTrigger(hours=2),
+            id="process_followups",
+            name="Process Due Follow-ups",
             replace_existing=True
         )
         
@@ -113,3 +133,31 @@ class SchedulerService:
                 logger.debug("⏰ JOB SUCCESS: Rate Limiter Cleanup")
         except Exception as e:
             logger.error(f"❌ JOB ERROR (Rate Limiter Cleanup): {e}", exc_info=True)
+
+    async def _run_check_replies(self):
+        """Wrapper to check for email replies"""
+        try:
+            logger.info("⏰ JOB START: Checking Email Replies")
+            reply_service = ReplyService()
+            
+            # Run the task
+            result = await reply_service.check_and_analyze_replies()
+            
+            logger.info(f"⏰ JOB END: Check Replies - Checked: {result.get('checked')}, New Replies: {result.get('new_replies')}, Analyzed: {result.get('analyzed')}")
+            
+        except Exception as e:
+            logger.error(f"❌ JOB ERROR (Check Replies): {e}", exc_info=True)
+
+    async def _run_process_followups(self):
+        """Wrapper to process due follow-ups"""
+        try:
+            logger.info("⏰ JOB START: Processing Due Follow-ups")
+            followup_service = FollowUpService()
+            
+            # Run the task
+            result = await followup_service.process_due_followups()
+            
+            logger.info(f"⏰ JOB END: Process Follow-ups - Processed: {result.get('processed')}, Failed: {result.get('failed')}, Skipped: {result.get('skipped_timezone')}")
+            
+        except Exception as e:
+            logger.error(f"❌ JOB ERROR (Process Follow-ups): {e}", exc_info=True)

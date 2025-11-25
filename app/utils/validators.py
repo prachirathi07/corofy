@@ -22,9 +22,6 @@ class LeadValidator(BaseModel):
     company_industry: Optional[str] = None
     company_website: Optional[str] = None
     company_linkedin: Optional[str] = None
-    company_blogpost: Optional[str] = None
-    company_angellist: Optional[str] = None
-    company_phone: Optional[str] = None
     
     @validator('founder_email')
     def validate_email(cls, v):
@@ -69,14 +66,6 @@ class LeadValidator(BaseModel):
                 v = f'https://{v}'
         return v
     
-    @validator('company_phone')
-    def validate_phone(cls, v):
-        """Validate phone number format"""
-        if v:
-            v = v.strip()
-            # Remove common formatting characters
-            cleaned = re.sub(r'[\s\-\(\)\.]', '', v)
-            # Check if it's a valid phone number (basic check)
             if not re.match(r'^\+?[\d]{7,15}$', cleaned):
                 logger.warning(f'Potentially invalid phone number: {v}')
         return v

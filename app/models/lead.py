@@ -14,21 +14,15 @@ class LeadBase(BaseModel):
     company_industry: Optional[str] = None
     company_website: Optional[str] = None
     company_linkedin: Optional[str] = None
-    company_blogpost: Optional[str] = None
-    company_angellist: Optional[str] = None
-    company_phone: Optional[str] = None
     is_verified: Optional[bool] = False
     followup_5_sent: Optional[bool] = False
     followup_10_sent: Optional[bool] = False
     mail_status: Optional[str] = "new"  # new, email_sent, replied, bounced, unsubscribed
     reply_priority: Optional[str] = None
-    thread_id: Optional[str] = None
+    gmail_thread_id: Optional[str] = None
     mail_replies: Optional[str] = None
     email_content: Optional[str] = None
     email_subject: Optional[str] = None
-    wait_initial_email: Optional[bool] = False
-    wait_followup_5: Optional[bool] = False
-    wait_followup_10: Optional[bool] = False
 
 class LeadCreate(LeadBase):
     """Model for creating a new lead in scraped_data table"""
@@ -43,7 +37,7 @@ class LeadUpdate(BaseModel):
     mail_status: Optional[str] = None
     email_content: Optional[str] = None
     email_subject: Optional[str] = None
-    thread_id: Optional[str] = None
+    gmail_thread_id: Optional[str] = None
     followup_5_sent: Optional[bool] = None
     followup_10_sent: Optional[bool] = None
 
@@ -104,9 +98,6 @@ def map_apollo_to_scraped_data(apollo_data: Dict[str, Any], person_details: Opti
         "company_industry": organization.get("industry", ""),
         "company_website": company_website,
         "company_linkedin": organization.get("linkedin_url", ""),
-        "company_blogpost": organization.get("blog_url", ""),
-        "company_angellist": organization.get("angellist_url", ""),
-        "company_phone": organization.get("phone", ""),
         "mail_status": "new",
         "is_verified": False,
         "followup_5_sent": False,

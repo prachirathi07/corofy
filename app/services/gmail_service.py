@@ -73,7 +73,7 @@ class GmailService:
             reply_to: Reply-to email (optional)
         
         Returns:
-            Dict with message_id, thread_id, and status
+            Dict with message_id, gmail_thread_id, and status
         """
         try:
             # Create message
@@ -106,7 +106,7 @@ class GmailService:
             return {
                 "success": True,
                 "message_id": message_id,
-                "thread_id": thread_id,
+                "gmail_thread_id": thread_id,
                 "to_email": to_email,
                 "subject": subject
             }
@@ -130,7 +130,7 @@ class GmailService:
                 "error": error_info["error"],
                 "error_type": error_info["error_type"],
                 "message_id": None,
-                "thread_id": None,
+                "gmail_thread_id": None,
                 "status_code": error_info.get("status_code")
             }
     

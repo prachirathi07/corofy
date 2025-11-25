@@ -296,7 +296,6 @@ class ApolloServiceEnriched:
             "company_name": org.get("name"),
             "company_website": org.get("website_url"),
             "company_linkedin": org.get("linkedin_url"),
-            "company_phone": phone,
             "company_industry": org.get("industry") or person.get("industry"),
             "company_country": org.get("primary_location", {}).get("country")
         }
