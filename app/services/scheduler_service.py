@@ -125,18 +125,6 @@ class SchedulerService:
     async def _run_rate_limiter_cleanup(self):
         """Wrapper to cleanup rate limiter"""
         try:
-            # Rate limiter is a singleton, so we just call its method
-            # Note: _periodic_cleanup is internal, but we can call it or expose a public method
-            # Ideally we should expose a public method, but for now accessing protected is fine for this service
-            if hasattr(rate_limiter, '_periodic_cleanup'):
-                await rate_limiter._periodic_cleanup()
-                logger.debug("⏰ JOB SUCCESS: Rate Limiter Cleanup")
-        except Exception as e:
-            logger.error(f"❌ JOB ERROR (Rate Limiter Cleanup): {e}", exc_info=True)
-
-    async def _run_check_replies(self):
-        """Wrapper to check for email replies"""
-        try:
             logger.info("⏰ JOB START: Checking Email Replies")
             reply_service = ReplyService()
             

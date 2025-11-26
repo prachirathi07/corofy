@@ -861,6 +861,29 @@ export default function FoundersTable() {
 
       console.log(`✅ Updated verification status (false -> true) for ${verifiedFounders.length} emails in database`);
 
+      // ✅ CALL BACKEND API TO ACTUALLY SEND EMAILS
+      console.log(`📤 Calling backend API to send ${founderIds.length} emails...`);
+      try {
+        const apiResponse = await fetch('https://corofy-mehul-bhai.onrender.com/api/leads/send-emails', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ lead_ids: founderIds })
+        });
+
+        const apiData = await apiResponse.json();
+        console.log('📬 Backend API response:', apiData);
+
+        if (!apiData.success) {
+          console.error('❌ Backend API failed:', apiData);
+          alert(`Warning: Emails may not have been sent. Error: ${apiData.message || 'Unknown error'}`);
+        } else {
+          console.log(`✅ Backend is processing ${apiData.count || founderIds.length} emails`);
+        }
+      } catch (apiError) {
+        console.error('❌ Error calling backend API:', apiError);
+        alert('Warning: Could not connect to email sending service. Emails may not be sent.');
+      }
+
       // Store count for success message
       setLastSentCount(verifiedFounders.length);
 
